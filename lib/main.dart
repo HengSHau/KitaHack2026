@@ -24,5 +24,3 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// You can keep the MyHomePage classes below if you still need the counter logic for testing, 
-// otherwise, you can safely delete them since the app now starts at LoginPage().
