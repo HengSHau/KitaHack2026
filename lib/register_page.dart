@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'custom_text_field.dart'; // Import the shared widget
+import 'custom_text_field.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -29,14 +29,16 @@ class _RegisterPageState extends State<RegisterPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                "Register", // Changed to Register to match logic
+                "Register",
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                   color: Colors.black,
                 ),
               ),
+              
               const SizedBox(height: 30),
+
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -57,21 +59,38 @@ class _RegisterPageState extends State<RegisterPage> {
                   children: [
                     const CustomTextField(label: "Username", hint: "Username"),
                     const SizedBox(height: 15),
+
                     const CustomTextField(label: "Password", hint: "Password", isPassword: true),
                     const SizedBox(height: 15),
+
+                    const CustomTextField(label: "Confirm Password", hint: "Password", isPassword: true),
+                    const SizedBox(height: 15),
+
                     const CustomTextField(label: "Email", hint: "Email"),
                     const SizedBox(height: 15),
+
                     const Text(
                       "Personality",
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.black87),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: Colors.black87,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
                       value: selectedPersonality,
-                      hint: const Text("Introverted", style: TextStyle(color: Colors.grey)),
+                      hint: const Text("Introverted", style: TextStyle(color: Colors.grey)), // 默认提示
                       decoration: InputDecoration(
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade300),
+                        ),
                       ),
                       items: ["Introverted", "Extroverted", "Ambivert"]
                           .map((String value) {
@@ -86,18 +105,27 @@ class _RegisterPageState extends State<RegisterPage> {
                         });
                       },
                     ),
+
                     const SizedBox(height: 30),
+
                     SizedBox(
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: () {},
+                        onPressed: () {
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF2ECC71),
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
                         ),
-                        child: const Text("Register", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        child: const Text(
+                          "Register",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
                       ),
                     ),
                   ],

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'custom_text_field.dart'; // Import shared widget
-import 'register_page.dart';     // Import register page for navigation
+import 'custom_text_field.dart';
+import 'register_page.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -17,7 +17,11 @@ class LoginPage extends StatelessWidget {
               const SizedBox(height: 40),
               const Text(
                 "Sign in",
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.black),
+                style: TextStyle(
+                  fontSize: 32, 
+                  fontWeight: FontWeight.bold, 
+                  color: Colors.black
+                ),
               ),
               const SizedBox(height: 40),
               Container(
@@ -42,17 +46,33 @@ class LoginPage extends StatelessWidget {
                     const SizedBox(height: 20),
                     const CustomTextField(label: "Password", hint: "Password", isPassword: true),
                     const SizedBox(height: 20),
-                    GestureDetector(
-                      onTap: () {},
-                      child: const Text(
-                        "Forgot password?",
-                        style: TextStyle(
-                          decoration: TextDecoration.underline,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
+
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: InkWell(
+                        onTap: () {
+                          // This code runs when you click the text
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Forgot Password clicked!"),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8.0),
+                          child: Text(
+                            "Forgot password?",
+                            style: TextStyle(
+                              decoration: TextDecoration.underline,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.black87,
+                            ),
+                          ),
                         ),
                       ),
                     ),
+                    
                     const SizedBox(height: 30),
                     SizedBox(
                       width: double.infinity,
@@ -73,7 +93,6 @@ class LoginPage extends StatelessWidget {
                       height: 50,
                       child: ElevatedButton(
                         onPressed: () {
-                          // Navigation logic to separate file
                           Navigator.push(
                             context,
                             MaterialPageRoute(builder: (context) => const RegisterPage()),
