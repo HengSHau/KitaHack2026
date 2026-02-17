@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+<<<<<<< HEAD
+=======
+import 'login_page.dart';
+>>>>>>> kingsen
 
 void main() {
   runApp(const MyApp());
@@ -7,6 +11,7 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+<<<<<<< HEAD
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
@@ -120,3 +125,19 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 }
+=======
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Auth UI Demo',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.green,
+        scaffoldBackgroundColor: Colors.white,
+        useMaterial3: true,
+      ),
+      home: const LoginPage(),
+    );
+  }
+}
+>>>>>>> kingsen
