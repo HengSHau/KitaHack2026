@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'custom_text_field.dart';
 import 'register_page.dart';
+import 'forgot_password_page.dart';
 
 class LoginPage extends StatelessWidget {
   const LoginPage({super.key});
@@ -52,11 +53,9 @@ class LoginPage extends StatelessWidget {
                       child: InkWell(
                         onTap: () {
                           // This code runs when you click the text
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Forgot Password clicked!"),
-                              duration: Duration(seconds: 2),
-                            ),
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const ForgotPasswordPage()),
                           );
                         },
                         child: const Padding(
