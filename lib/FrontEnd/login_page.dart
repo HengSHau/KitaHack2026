@@ -1,9 +1,32 @@
 import 'package:flutter/material.dart';
 import 'custom_text_field.dart';
 import 'register_page.dart';
+import '../backend/login_backend.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-class LoginPage extends StatelessWidget {
+
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
+  @override
+  State<LoginPage> createState()=> _LoginPageState();
+}
+
+class _LoginPageState extends State<LoginPage>{
+  // NEW: Added controllers to capture the text from the UI
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  // NEW: Added instance of your backend class
+  final LoginBackend _loginService = LoginBackend();
+
+  // NEW: Clean up memory when the user leaves the page
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -42,9 +65,9 @@ class LoginPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const CustomTextField(label: "Username", hint: "Username"),
+                    CustomTextField(label: "Username", hint: "Username",controller: _emailController,),
                     const SizedBox(height: 20),
-                    const CustomTextField(label: "Password", hint: "Password", isPassword: true),
+                    CustomTextField(label: "Password", hint: "Password", isPassword: true,controller: _passwordController,),
                     const SizedBox(height: 20),
 
                     Align(
@@ -78,7 +101,33 @@ class LoginPage extends StatelessWidget {
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: () {},
+                        onPressed: () async {
+                          String email = _emailController.text.trim();
+                          String password = _passwordController.text.trim();
+
+                          if (email.isEmpty || password.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Please fill in all fields")),
+                            );
+                            return;
+                          }
+
+                          // This calls the signInWithEmail function in login_backend.dart
+                          User? user = await _loginService.signInWithEmail(email, password);
+
+                          if (user != null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("Login Successful! Welcome ${user.email}"),
+                                backgroundColor: Colors.green, // Visual feedback for success
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Login Failed. Check credentials.")),
+                            );
+                          }
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF2ECC71),
                           foregroundColor: Colors.white,
