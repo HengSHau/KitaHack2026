@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'custom_text_field.dart';
-import 'package:kitahack2026/backend/register.dart';
+import 'package:kitahack2026/backend/register_backend.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -62,16 +62,16 @@ class _RegisterPageState extends State<RegisterPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const CustomTextField(label: "Username", hint: "Username"),
+                    CustomTextField(label: "Username", hint: "Username",controller: username,),
                     const SizedBox(height: 15),
 
-                    const CustomTextField(label: "Password", hint: "Password", isPassword: true),
+                    CustomTextField(label: "Password", hint: "Password", isPassword: true,controller: password,),
                     const SizedBox(height: 15),
 
-                    const CustomTextField(label: "Confirm Password", hint: "Password", isPassword: true),
+                    CustomTextField(label: "Confirm Password", hint: "Password", isPassword: true,controller: comfirmpassword,),
                     const SizedBox(height: 15),
 
-                    const CustomTextField(label: "Email", hint: "Email"),
+                    CustomTextField(label: "Email", hint: "Email",controller: email,),
                     const SizedBox(height: 15),
 
                     const Text(
