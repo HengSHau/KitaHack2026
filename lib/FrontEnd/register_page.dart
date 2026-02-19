@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 import 'custom_text_field.dart';
+import 'package:kitahack2026/backend/register.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
-
+  
   @override
   State<RegisterPage> createState() => _RegisterPageState();
 }
 
 class _RegisterPageState extends State<RegisterPage> {
   String? selectedPersonality;
+  final TextEditingController username = TextEditingController();
+  final TextEditingController email = TextEditingController();
+  final TextEditingController password = TextEditingController();
+  final TextEditingController comfirmpassword = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -112,7 +117,40 @@ class _RegisterPageState extends State<RegisterPage> {
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
+                          // 1. 简单的本地前端检查
+                          if (password.text != comfirmpassword.text) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Passwords do not match!")),
+                            );
+                            return;
+                          }
+                          
+                          if (selectedPersonality == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Please select a personality")),
+                            );
+                            return;
+                          }
+
+                          // 2. 调用后端逻辑
+                          try {
+                            await registerUser(
+                              username: username.text,
+                              email: email.text,
+                              password: password.text,
+                              personality: selectedPersonality!,
+                            );
+                            // 成功后跳转
+                            if (mounted) Navigator.pushReplacementNamed(context, '/home');
+                          } catch (e) {
+                            // 失败显示错误
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(e.toString())),
+                              );
+                            }
+                          }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF2ECC71),
