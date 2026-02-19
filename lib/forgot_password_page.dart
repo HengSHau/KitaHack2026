@@ -14,11 +14,12 @@ class ForgotPasswordPage extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.black),
-                onPressed: () => Navigator.pop(context),
-                padding: EdgeInsets.zero,
+              Align(
                 alignment: Alignment.centerLeft,
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.black),
+                  onPressed: () => Navigator.pop(context),
+                ),
               ),
               const SizedBox(height: 20),
 
@@ -73,20 +74,6 @@ class ForgotPasswordPage extends StatelessWidget {
                         child: const Text(
                           "Reset Password",
                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 20),
-
-                    GestureDetector(
-                      onTap: () => Navigator.pop(context),
-                      child: const Text(
-                        "Back to sign in",
-                        style: TextStyle(
-                          decoration: TextDecoration.underline,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
                         ),
                       ),
                     ),
