@@ -118,10 +118,10 @@ class _RegisterPageState extends State<RegisterPage> {
                       height: 50,
                       child: ElevatedButton(
                         onPressed: () async {
-                          // 1. 简单的本地前端检查
+                          // validation
                           if (password.text != comfirmpassword.text) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("Passwords do not match!")),
+                              const SnackBar(content: Text("Password unmatch!")),
                             );
                             return;
                           }
@@ -133,7 +133,6 @@ class _RegisterPageState extends State<RegisterPage> {
                             return;
                           }
 
-                          // 2. 调用后端逻辑
                           try {
                             await registerUser(
                               username: username.text,
@@ -141,10 +140,10 @@ class _RegisterPageState extends State<RegisterPage> {
                               password: password.text,
                               personality: selectedPersonality!,
                             );
-                            // 成功后跳转
+                            // complete 
                             if (mounted) Navigator.pushReplacementNamed(context, '/home');
                           } catch (e) {
-                            // 失败显示错误
+                            // failed
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(content: Text(e.toString())),
