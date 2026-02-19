@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 import 'custom_text_field.dart';
+import 'package:kitahack2026/backend/register_backend.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
-
+  
   @override
   State<RegisterPage> createState() => _RegisterPageState();
 }
 
 class _RegisterPageState extends State<RegisterPage> {
   String? selectedPersonality;
+  final TextEditingController username = TextEditingController();
+  final TextEditingController email = TextEditingController();
+  final TextEditingController password = TextEditingController();
+  final TextEditingController comfirmpassword = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -57,16 +62,16 @@ class _RegisterPageState extends State<RegisterPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const CustomTextField(label: "Username", hint: "Username"),
+                    CustomTextField(label: "Username", hint: "Username",controller: username,),
                     const SizedBox(height: 15),
 
-                    const CustomTextField(label: "Password", hint: "Password", isPassword: true),
+                    CustomTextField(label: "Password", hint: "Password", isPassword: true,controller: password,),
                     const SizedBox(height: 15),
 
-                    const CustomTextField(label: "Confirm Password", hint: "Password", isPassword: true),
+                    CustomTextField(label: "Confirm Password", hint: "Password", isPassword: true,controller: comfirmpassword,),
                     const SizedBox(height: 15),
 
-                    const CustomTextField(label: "Email", hint: "Email"),
+                    CustomTextField(label: "Email", hint: "Email",controller: email,),
                     const SizedBox(height: 15),
 
                     const Text(
@@ -112,7 +117,39 @@ class _RegisterPageState extends State<RegisterPage> {
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
+                          // validation
+                          if (password.text != comfirmpassword.text) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Password unmatch!")),
+                            );
+                            return;
+                          }
+                          
+                          if (selectedPersonality == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Please select a personality")),
+                            );
+                            return;
+                          }
+
+                          try {
+                            await registerUser(
+                              username: username.text,
+                              email: email.text,
+                              password: password.text,
+                              personality: selectedPersonality!,
+                            );
+                            // complete 
+                            if (mounted) Navigator.pushReplacementNamed(context, '/home');
+                          } catch (e) {
+                            // failed
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(e.toString())),
+                              );
+                            }
+                          }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF2ECC71),

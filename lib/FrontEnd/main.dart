@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
-import 'login_page.dart';
+import 'package:firebase_core/firebase_core.dart'; // Ensure core is imported
+import '../firebase_options.dart'; // 1. IMPORT your options file
+import '../FrontEnd/login_page.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const MyApp());
 }
 
@@ -11,14 +17,15 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Auth UI Demo',
+      title: 'Auth UI Demo', // Updated title from kingsen
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.green,
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.green), // Merged green theme
         scaffoldBackgroundColor: Colors.white,
         useMaterial3: true,
       ),
-      home: const LoginPage(),
+      // Setting LoginPage as the entry point for your online learning platform
+      home: const LoginPage(), 
     );
   }
 }
