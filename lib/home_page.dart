@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'match_in_advance_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -48,13 +49,20 @@ class _HomePageState extends State<HomePage> {
                   width: double.infinity,
                   height: 45,
                   child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      Navigator.pop(context); 
+                      
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const MatchInAdvancePage()),
+                      );
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFAAAAAA),
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    child: const Text("Match Later", style: TextStyle(fontWeight: FontWeight.w600)),
+                    child: const Text("Match in Advance", style: TextStyle(fontWeight: FontWeight.w600)),
                   ),
                 ),
               ],
