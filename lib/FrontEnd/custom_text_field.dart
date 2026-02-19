@@ -29,8 +29,8 @@ class CustomTextField extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         TextField(
-          controller: controller,
           obscureText: isPassword,
+          controller: controller,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(color: Colors.grey.shade400),
