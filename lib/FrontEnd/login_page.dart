@@ -1,32 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Ensure this is imported for the User type
 import 'custom_text_field.dart';
 import 'register_page.dart';
+import 'forgot_password_page.dart';
+import '../FrontEnd/home_page.dart';
 import '../backend/login_backend.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
+
   @override
-  State<LoginPage> createState()=> _LoginPageState();
+  State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage>{
-  // NEW: Added controllers to capture the text from the UI
+class _LoginPageState extends State<LoginPage> {
+  // Controllers to capture the text from the UI
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  // NEW: Added instance of your backend class
+  // Instance of your backend class
   final LoginBackend _loginService = LoginBackend();
 
-  // NEW: Clean up memory when the user leaves the page
+  // Clean up memory when the user leaves the page
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -41,9 +42,9 @@ class _LoginPageState extends State<LoginPage>{
               const Text(
                 "Sign in",
                 style: TextStyle(
-                  fontSize: 32, 
-                  fontWeight: FontWeight.bold, 
-                  color: Colors.black
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
                 ),
               ),
               const SizedBox(height: 40),
@@ -65,21 +66,31 @@ class _LoginPageState extends State<LoginPage>{
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CustomTextField(label: "Username", hint: "Username",controller: _emailController,),
+                    // Email Field
+                    CustomTextField(
+                      label: "Email",
+                      hint: "example@gmail.com",
+                      controller: _emailController,
+                    ),
                     const SizedBox(height: 20),
-                    CustomTextField(label: "Password", hint: "Password", isPassword: true,controller: _passwordController,),
+                    
+                    // Password Field
+                    CustomTextField(
+                      label: "Password",
+                      hint: "Password",
+                      isPassword: true,
+                      controller: _passwordController,
+                    ),
                     const SizedBox(height: 20),
 
+                    // Forgot Password Link
                     Align(
                       alignment: Alignment.centerLeft,
                       child: InkWell(
                         onTap: () {
-                          // This code runs when you click the text
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Forgot Password clicked!"),
-                              duration: Duration(seconds: 2),
-                            ),
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const ForgotPasswordPage()),
                           );
                         },
                         child: const Padding(
@@ -95,8 +106,10 @@ class _LoginPageState extends State<LoginPage>{
                         ),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 30),
+
+                    // Sign In Button
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -105,6 +118,7 @@ class _LoginPageState extends State<LoginPage>{
                           String email = _emailController.text.trim();
                           String password = _passwordController.text.trim();
 
+                          // 1. Basic Validation
                           if (email.isEmpty || password.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text("Please fill in all fields")),
@@ -112,31 +126,51 @@ class _LoginPageState extends State<LoginPage>{
                             return;
                           }
 
-                          // This calls the signInWithEmail function in login_backend.dart
+                          // 2. Call Backend to attempt login
                           User? user = await _loginService.signInWithEmail(email, password);
 
+                          // 3. Handle Login Result
                           if (user != null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text("Login Successful! Welcome ${user.email}"),
-                                backgroundColor: Colors.green, // Visual feedback for success
-                              ),
-                            );
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Login Successful!"),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                              // Navigate to Home Page upon success
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(builder: (context) => const HomePage()),
+                              );
+                            }
                           } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("Login Failed. Check credentials.")),
-                            );
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Login Failed. Check credentials."),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
                           }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF2ECC71),
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
-                        child: const Text("Sign In", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        child: const Text(
+                          "Sign In",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 15),
+
+                    // Register Button (Redirects to Register Page)
                     SizedBox(
                       width: double.infinity,
                       height: 50,
@@ -150,9 +184,14 @@ class _LoginPageState extends State<LoginPage>{
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFAAAAAA),
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
-                        child: const Text("Register", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        child: const Text(
+                          "Register",
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
                       ),
                     ),
                   ],
