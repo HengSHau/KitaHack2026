@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'custom_text_field.dart';
-import 'package:kitahack2026/backend/register.dart';
+import 'package:kitahack2026/backend/register_backend.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
