@@ -4,11 +4,7 @@
 # This file should be version controlled and should not be manually edited.
 
 version:
-<<<<<<< HEAD
   revision: "19074d12f7eaf6a8180cd4036a430c1d76de904e"
-=======
-  revision: "35c388afb57ef061d06a39b537336c87e0e3d1b1"
->>>>>>> kingsen
   channel: "stable"
 
 project_type: app
@@ -17,49 +13,11 @@ project_type: app
 migration:
   platforms:
     - platform: root
-<<<<<<< HEAD
-      create_revision: 19074d12f7eaf6a8180cd4036a430c1d76de904e
-      base_revision: 19074d12f7eaf6a8180cd4036a430c1d76de904e
-    - platform: android
-      create_revision: 19074d12f7eaf6a8180cd4036a430c1d76de904e
-      base_revision: 19074d12f7eaf6a8180cd4036a430c1d76de904e
-    - platform: ios
-      create_revision: 19074d12f7eaf6a8180cd4036a430c1d76de904e
-      base_revision: 19074d12f7eaf6a8180cd4036a430c1d76de904e
-    - platform: linux
-      create_revision: 19074d12f7eaf6a8180cd4036a430c1d76de904e
-      base_revision: 19074d12f7eaf6a8180cd4036a430c1d76de904e
-    - platform: macos
       create_revision: 19074d12f7eaf6a8180cd4036a430c1d76de904e
       base_revision: 19074d12f7eaf6a8180cd4036a430c1d76de904e
     - platform: web
       create_revision: 19074d12f7eaf6a8180cd4036a430c1d76de904e
       base_revision: 19074d12f7eaf6a8180cd4036a430c1d76de904e
-    - platform: windows
-      create_revision: 19074d12f7eaf6a8180cd4036a430c1d76de904e
-      base_revision: 19074d12f7eaf6a8180cd4036a430c1d76de904e
-=======
-      create_revision: 35c388afb57ef061d06a39b537336c87e0e3d1b1
-      base_revision: 35c388afb57ef061d06a39b537336c87e0e3d1b1
-    - platform: android
-      create_revision: 35c388afb57ef061d06a39b537336c87e0e3d1b1
-      base_revision: 35c388afb57ef061d06a39b537336c87e0e3d1b1
-    - platform: ios
-      create_revision: 35c388afb57ef061d06a39b537336c87e0e3d1b1
-      base_revision: 35c388afb57ef061d06a39b537336c87e0e3d1b1
-    - platform: linux
-      create_revision: 35c388afb57ef061d06a39b537336c87e0e3d1b1
-      base_revision: 35c388afb57ef061d06a39b537336c87e0e3d1b1
-    - platform: macos
-      create_revision: 35c388afb57ef061d06a39b537336c87e0e3d1b1
-      base_revision: 35c388afb57ef061d06a39b537336c87e0e3d1b1
-    - platform: web
-      create_revision: 35c388afb57ef061d06a39b537336c87e0e3d1b1
-      base_revision: 35c388afb57ef061d06a39b537336c87e0e3d1b1
-    - platform: windows
-      create_revision: 35c388afb57ef061d06a39b537336c87e0e3d1b1
-      base_revision: 35c388afb57ef061d06a39b537336c87e0e3d1b1
->>>>>>> kingsen
 
   # User provided section
 
