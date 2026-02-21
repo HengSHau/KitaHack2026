@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:kitahack2026/backend/home_backend.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -11,6 +13,44 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
+  
+  //Map controller
+  final MapController _mapController = MapController();
+  // set an default location
+  LatLng _currentLocation = const LatLng(3.055, 101.69);
+
+  final UserService _userService = UserService();
+  
+  String _currentUsername = "Loading...";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadName();
+    _startLocationTracking();
+  }
+
+  void _loadName() async {
+    String name = await _userService.getCurrentUsername();
+    if (mounted) {
+      setState(() {
+        _currentUsername = name;
+      });
+    }
+  }
+
+  void _startLocationTracking() async {
+  // get location request
+  var status = await Permission.location.request();
+  
+  if (status.isGranted) {
+    // if accept start tracking
+    _userService.updateLiveLocation();
+  } else {
+    // reject
+    print("User has already reject tracking request!");
+  }
+}
 
   void _showMatchDialog() {
     showDialog(
@@ -121,8 +161,8 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "Where to go? [username].",
+                  Text(
+                    "Where to go? $_currentUsername.",
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 20),
