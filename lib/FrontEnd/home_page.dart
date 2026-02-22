@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'match_in_advance_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -27,7 +26,7 @@ class _HomePageState extends State<HomePage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                  "Match Now or later",
+                  "Match Now or Later",
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 24),
@@ -82,33 +81,15 @@ class _HomePageState extends State<HomePage> {
           SizedBox(
             width: double.infinity,
             height: MediaQuery.of(context).size.height * 0.65,
-            child: FlutterMap(
-              options: const MapOptions(
-                initialCenter: LatLng(3.055, 101.69), // APU / Bukit Jalil 附近的坐标
-                initialZoom: 14.0,
+            child: GoogleMap(
+              initialCameraPosition: const CameraPosition(
+                target: LatLng(3.055, 101.69), 
+                zoom: 14.0,
               ),
-              children: [
-                TileLayer(
-                  urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-                  subdomains: const ['a', 'b', 'c', 'd'],
-                  userAgentPackageName: 'com.kitahack2026.app',
-                ),
-              ],
-            ),
-          ),
-
-          // Title
-          const SafeArea(
-            child: Padding(
-              padding: EdgeInsets.all(24.0),
-              child: Text(
-                "Carpooling",
-                style: TextStyle(
-                  fontSize: 28, 
-                  fontWeight: FontWeight.bold, 
-                  color: Colors.black87
-                ),
-              ),
+              mapType: MapType.normal, 
+              myLocationEnabled: true, 
+              myLocationButtonEnabled: false, 
+              zoomControlsEnabled: false, 
             ),
           ),
 

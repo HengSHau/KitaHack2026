@@ -62,7 +62,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CustomTextField(label: "Username", hint: "Username",controller: username,),
+                    CustomTextField(label: "Email", hint: "Email",controller: email,),
                     const SizedBox(height: 15),
 
                     CustomTextField(label: "Password", hint: "Password", isPassword: true,controller: password,),
@@ -71,7 +71,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     CustomTextField(label: "Confirm Password", hint: "Password", isPassword: true,controller: comfirmpassword,),
                     const SizedBox(height: 15),
 
-                    CustomTextField(label: "Email", hint: "Email",controller: email,),
+                    CustomTextField(label: "Username", hint: "Username",controller: username,),
                     const SizedBox(height: 15),
 
                     const Text(
