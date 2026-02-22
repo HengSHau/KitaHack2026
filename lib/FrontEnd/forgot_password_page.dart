@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'custom_text_field.dart';
-import 'reset_password_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class ForgotPasswordPage extends StatefulWidget {

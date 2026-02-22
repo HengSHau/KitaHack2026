@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:kitahack2026/backend/home_backend.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'match_in_advance_page.dart';
+import 'settings_page.dart';
+import 'chat_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -15,13 +17,12 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   
   //Map controller
-  final MapController _mapController = MapController();
-  // set an default location
-  LatLng _currentLocation = const LatLng(3.055, 101.69);
+  GoogleMapController? _mapController;  // set an default location
+  final LatLng _defaultLocation=const LatLng(3.055,101.69);
 
   final UserService _userService = UserService();
   
-  String _currentUsername = "Loading...";
+  String _currentUsername = "Guest";
 
   @override
   void initState() {
@@ -66,7 +67,7 @@ class _HomePageState extends State<HomePage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Text(
-                  "Match Now or later",
+                  "Match Now or Later",
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 24),
@@ -88,13 +89,20 @@ class _HomePageState extends State<HomePage> {
                   width: double.infinity,
                   height: 45,
                   child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      Navigator.pop(context); 
+                      
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const MatchInAdvancePage()),
+                      );
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFAAAAAA),
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    child: const Text("Match Later", style: TextStyle(fontWeight: FontWeight.w600)),
+                    child: const Text("Match in Advance", style: TextStyle(fontWeight: FontWeight.w600)),
                   ),
                 ),
               ],
@@ -108,125 +116,117 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
+      body: IndexedStack(
+        index: _selectedIndex,
         children: [
-          // Map
-          SizedBox(
-            width: double.infinity,
-            height: MediaQuery.of(context).size.height * 0.65,
-            child: FlutterMap(
-              options: const MapOptions(
-                initialCenter: LatLng(3.055, 101.69), // APU / Bukit Jalil 附近的坐标
-                initialZoom: 14.0,
-              ),
-              children: [
-                TileLayer(
-                  urlTemplate: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
-                  subdomains: const ['a', 'b', 'c', 'd'],
-                  userAgentPackageName: 'com.kitahack2026.app',
-                ),
-              ],
-            ),
-          ),
-
-          // Title
-          const SafeArea(
-            child: Padding(
-              padding: EdgeInsets.all(24.0),
-              child: Text(
-                "Carpooling",
-                style: TextStyle(
-                  fontSize: 28, 
-                  fontWeight: FontWeight.bold, 
-                  color: Colors.black87
+          Stack (
+            children: [
+              // Map
+              SizedBox(
+                width: double.infinity,
+                height: MediaQuery.of(context).size.height * 0.65,
+                child: GoogleMap(
+                  onMapCreated: (controller)=>_mapController=controller,
+                  initialCameraPosition: const CameraPosition(
+                    target: LatLng(3.055, 101.69), 
+                    zoom: 14.0,
+                  ),
+                  mapType: MapType.normal, 
+                  myLocationEnabled: true, 
+                  myLocationButtonEnabled: false, 
+                 zoomControlsEnabled: false, 
                 ),
               ),
-            ),
-          ),
-
-          // Control Panel
-          Align(
-            alignment: Alignment.bottomCenter,
-            child: Container(
-              height: MediaQuery.of(context).size.height * 0.45,
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 30.0),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-                border: const Border(top: BorderSide(color: Color(0xFF2ECC71), width: 1.5)),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Where to go? $_currentUsername.",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 20),
-                  
-                  Container(
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const SizedBox(width: 16),
-                        const Icon(Icons.search, color: Colors.grey),
-                        const SizedBox(width: 10),
-                        
-                        const Expanded(
-                          child: TextField(
-                            decoration: InputDecoration(
-                              hintText: "Search",
-                              border: InputBorder.none,
-                              isDense: true,
-                              contentPadding: EdgeInsets.zero,
-                            ),
-                          ),
-                        ),
-                        
-                        const Icon(Icons.mic, color: Colors.grey),
-                        const SizedBox(width: 16),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  
-                  Wrap(
-                    spacing: 12.0, 
-                    runSpacing: 10.0,
-                    children: [
-                      _buildLocationChip("Pavilion Bukit Jalil"),
-                      _buildLocationChip("APU"),
-                      _buildLocationChip("Parkhill"),
+        
+              // Control Panel
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: Container(
+                  height: MediaQuery.of(context).size.height * 0.45,
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 30.0),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                    border: const Border(top: BorderSide(color: Color(0xFF2ECC71), width: 1.5)),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))
                     ],
                   ),
-                  
-                  const Spacer(),
-                  
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: _showMatchDialog,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2ECC71),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Where to go, $_currentUsername?",
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
-                      child: const Text("Match", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                    ),
+                      const SizedBox(height: 20),
+                    
+                      Container(
+                        height: 46,
+                        decoration: BoxDecoration(
+                         color: Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            const SizedBox(width: 16),
+                            const Icon(Icons.search, color: Colors.grey),
+                            const SizedBox(width: 10),
+
+                            const Expanded(
+                              child: TextField(
+                                decoration: InputDecoration(
+                                  hintText: "Search",
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
+                              ),
+                            ),
+                          
+                            const Icon(Icons.mic, color: Colors.grey),
+                            const SizedBox(width: 16),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                    
+                      Wrap(
+                        spacing: 12.0, 
+                        runSpacing: 10.0,
+                        children: [
+                          _buildLocationChip("Pavilion Bukit Jalil"),
+                          _buildLocationChip("APU"),
+                          _buildLocationChip("Parkhill"),
+                        ],
+                      ),
+                    
+                      const Spacer(),
+                    
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          onPressed: _showMatchDialog,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF2ECC71),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                          ),
+                          child: const Text("Match", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
+          
+          const ChatSelectionPage(),
+
+          const SettingsPage(),
         ],
       ),
       
@@ -238,23 +238,29 @@ class _HomePageState extends State<HomePage> {
         ),
         child: BottomNavigationBar(
           currentIndex: _selectedIndex,
+          type: BottomNavigationBarType.fixed,
           onTap: (index) {
             setState(() {
               _selectedIndex = index;
             });
           },
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: Colors.blue,
-          unselectedItemColor: Colors.black,
-          selectedFontSize: 10,
-          unselectedFontSize: 10,
+          selectedItemColor: Colors.blueAccent,
+          unselectedItemColor: Colors.grey,
           backgroundColor: Colors.white,
           elevation: 8,
-          items: [
-            const BottomNavigationBarItem(icon: Icon(Icons.diamond), label: "Tab 1"),
-            const BottomNavigationBarItem(icon: Icon(Icons.circle), label: "Tab 2"),
-            const BottomNavigationBarItem(icon: Icon(Icons.change_history), label: "Tab 3"),
-            const BottomNavigationBarItem(icon: Icon(Icons.search), label: "Search"),
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.chat_bubble_outline),
+              label: 'Chat',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings),
+              label: 'Settings',
+            ),
           ],
         ),
       ),
