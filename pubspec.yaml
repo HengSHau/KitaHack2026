@@ -41,6 +41,7 @@ dependencies:
   c: ^0.0.2
   cloud_firestore: ^6.1.2
   google_maps_flutter: ^2.14.2
+  geocoding: ^4.0.0
 
 dev_dependencies:
   flutter_test:
