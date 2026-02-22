@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'match_in_advance_page.dart';
 import 'settings_page.dart';
+import 'chat_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -182,9 +183,8 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
-          const Scaffold(
-            body: Center(child: Text("Chat Page Coming Soon...", style: TextStyle(fontSize: 20))),
-          ),
+          
+          const ChatSelectionPage(),
 
           const SettingsPage(),
         ],
