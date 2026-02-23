@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
 import 'custom_text_field.dart';
-import 'reset_password_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-class ForgotPasswordPage extends StatelessWidget {
+class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
+
+  @override
+  State<ForgotPasswordPage> createState()=>_ForgotPasswordPageState();
+}
+
+class _ForgotPasswordPageState extends State<ForgotPasswordPage>{
+  final TextEditingController _emailController=TextEditingController();
+
 
   @override
   Widget build(BuildContext context) {
@@ -51,19 +59,44 @@ class ForgotPasswordPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const CustomTextField(label: "Email", hint: "Email"),
+                    CustomTextField(label: "Email", hint: "Email",controller: _emailController,),
                     const SizedBox(height: 30),
 
                     SizedBox(
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const ResetPasswordPage()),
-                          );
+                        onPressed: () async {
+                          String email = _emailController.text.trim(); // Get the email and remove spaces
+
+                          if (email.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Please enter your email")),
+                            );
+                            return;
+                          }
+
+                          try {
+                            // This triggers the Firebase template you saw in your console
+                            await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+    
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Reset link sent! Check your inbox."),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text("Error: ${e.toString()}")),
+                              );
+                            }
+                          }
                         },
+
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF2ECC71),
                           foregroundColor: Colors.white,

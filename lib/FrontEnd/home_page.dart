@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:kitahack2026/backend/home_backend.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'match_in_advance_page.dart';
 import 'settings_page.dart';
@@ -13,6 +15,43 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
+  
+  //Map controller
+  GoogleMapController? _mapController;  // set an default location
+  final LatLng _defaultLocation=const LatLng(3.055,101.69);
+
+  final UserService _userService = UserService();
+  
+  String _currentUsername = "Guest";
+
+  @override
+  void initState() {
+    super.initState();
+    _loadName();
+    _startLocationTracking();
+  }
+
+  void _loadName() async {
+    String name = await _userService.getCurrentUsername();
+    if (mounted) {
+      setState(() {
+        _currentUsername = name;
+      });
+    }
+  }
+
+  void _startLocationTracking() async {
+  // get location request
+  var status = await Permission.location.request();
+  
+  if (status.isGranted) {
+    // if accept start tracking
+    _userService.updateLiveLocation();
+  } else {
+    // reject
+    print("User has already reject tracking request!");
+  }
+}
 
   void _showMatchDialog() {
     showDialog(
@@ -87,6 +126,7 @@ class _HomePageState extends State<HomePage> {
                 width: double.infinity,
                 height: MediaQuery.of(context).size.height * 0.65,
                 child: GoogleMap(
+                  onMapCreated: (controller)=>_mapController=controller,
                   initialCameraPosition: const CameraPosition(
                     target: LatLng(3.055, 101.69), 
                     zoom: 14.0,
@@ -115,8 +155,8 @@ class _HomePageState extends State<HomePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        "Where to go? [username].",
+                      Text(
+                        "Where to go, $_currentUsername?",
                         style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 20),
