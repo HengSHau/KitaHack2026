@@ -8,8 +8,6 @@ class MatchInAdvancePage extends StatefulWidget {
 }
 
 class _MatchInAdvancePageState extends State<MatchInAdvancePage> {
-  int _selectedIndex = 0; 
-  
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
 
@@ -176,8 +174,7 @@ class _MatchInAdvancePageState extends State<MatchInAdvancePage> {
                             );
                             return;
                           }
-                          // 执行匹配操作...
-                          print("选中的日期: $_selectedDate, 时间: $_selectedTime");
+                          print("Date: $_selectedDate, Time: $_selectedTime");
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF2ECC71),
@@ -193,35 +190,6 @@ class _MatchInAdvancePageState extends State<MatchInAdvancePage> {
               ),
             ],
           ),
-        ),
-      ),
-      
-      bottomNavigationBar: Theme(
-        data: Theme.of(context).copyWith(
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-          hoverColor: Colors.transparent,
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: (index) {
-            setState(() {
-              _selectedIndex = index;
-            });
-          },
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: Colors.blue,
-          unselectedItemColor: Colors.black,
-          selectedFontSize: 10,
-          unselectedFontSize: 10,
-          backgroundColor: Colors.white,
-          elevation: 8,
-          items: [
-            const BottomNavigationBarItem(icon: Icon(Icons.diamond), label: "Tab 1"),
-            const BottomNavigationBarItem(icon: Icon(Icons.circle), label: "Tab 2"),
-            const BottomNavigationBarItem(icon: Icon(Icons.change_history), label: "Tab 3"),
-            const BottomNavigationBarItem(icon: Icon(Icons.search), label: "Search"),
-          ],
         ),
       ),
     );

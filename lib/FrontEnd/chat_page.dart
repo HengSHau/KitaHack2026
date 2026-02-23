@@ -82,7 +82,6 @@ class _ChatMessagingPageState extends State<ChatMessagingPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: kLightGreenBg,
       appBar: AppBar(
         title: Text(widget.userName, style: const TextStyle(color: Colors.black, fontSize: 18)),
         backgroundColor: Colors.white,
