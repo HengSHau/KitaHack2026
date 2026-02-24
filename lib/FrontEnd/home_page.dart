@@ -18,6 +18,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   Set<Marker> _markers = {};
   int _selectedIndex = 0;
+  bool _followUserLocation = true;
   
   //Map controller
   GoogleMapController? _mapController;  // set an default location
@@ -44,6 +45,10 @@ class _HomePageState extends State<HomePage> {
 
   if (target != null && mounted) {
     // 2. 前台负责操作控制器 (纯 UI)
+    setState(() {
+      _followUserLocation = false;
+    });
+
     _mapController?.animateCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(target: target, zoom: 16.0),
@@ -75,24 +80,38 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _startLocationTracking() async {
-  // get location request
-  var status = await Permission.location.request();
-  
-  if (status.isGranted) {
-    // if accept start tracking
-    _userService.updateLiveLocation();
-    Geolocator.getPositionStream().listen((Position position) {
+
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      print("手机 GPS 没开，请在设置中开启");
+      return;
+    }
+
+    // get location request
+    var status = await Permission.location.request();
+    
+    if (status.isGranted) {
+      // if accept start tracking
+      _userService.updateLiveLocation();
+      Geolocator.getPositionStream().listen((Position position) {
+        if (!mounted) return;
+    
+    // 只有当“跟随模式”开启时，才自动移动相机
+    if (_followUserLocation) {
       _mapController?.animateCamera(
         CameraUpdate.newLatLng(
           LatLng(position.latitude, position.longitude),
         ),
       );
-    });
-  } else {
-    // reject
-    print("User has already reject tracking request!");
+    }
+      });
+    } else if(status.isPermanentlyDenied){
+        openAppSettings();
+    }else {
+      // reject
+      print("User has already reject tracking request!");
+    }
   }
-}
 
 void _NearlyOtherUsers() {
   try {
