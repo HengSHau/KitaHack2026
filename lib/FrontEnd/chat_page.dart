@@ -10,7 +10,6 @@ class ChatSelectionPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // FIXED: Removed the semicolon error and added proper current user check
     final String myEmail = FirebaseAuth.instance.currentUser?.email ?? "";
 
     return Scaffold(
@@ -23,7 +22,6 @@ class ChatSelectionPage extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
       ),
-      // FIXED: Replaced static ListView with StreamBuilder to use proper Firebase users
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('users').snapshots(),
         builder: (context, snapshot) {
@@ -35,7 +33,6 @@ class ChatSelectionPage extends StatelessWidget {
             return const Center(child: Text("No users found."));
           }
 
-          // Filter out your own account from the list
           final docs = snapshot.data!.docs.where((doc) => doc.id != myEmail).toList();
 
           return ListView.builder(
@@ -59,10 +56,14 @@ class ChatSelectionPage extends StatelessWidget {
                 subtitle: const Text("Available for carpool"),
                 trailing: const Icon(Icons.chevron_right, color: Colors.grey),
                 onTap: () {
+                  // NECESSARY CHANGE: Pass email to the next page
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => ChatMessagingPage(userName: name),
+                      builder: (context) => ChatMessagingPage(
+                        userName: name,
+                        userEmail: userData['email'] ?? docs[index].id, 
+                      ),
                     ),
                   );
                 },
@@ -77,7 +78,13 @@ class ChatSelectionPage extends StatelessWidget {
 
 class ChatMessagingPage extends StatefulWidget {
   final String userName;
-  const ChatMessagingPage({super.key, required this.userName});
+  final String userEmail; // NECESSARY CHANGE: Define userEmail
+
+  const ChatMessagingPage({
+    super.key, 
+    required this.userName, 
+    required this.userEmail // NECESSARY CHANGE: Add to constructor
+  });
 
   @override
   State<ChatMessagingPage> createState() => _ChatMessagingPageState();
@@ -98,12 +105,15 @@ class _ChatMessagingPageState extends State<ChatMessagingPage> {
       'text': text,
       'sender': myEmail,
       'timestamp': FieldValue.serverTimestamp(),
-      'receiver': widget.userName,
+      'receiver': widget.userEmail, // NECESSARY CHANGE: Use Email ID
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    // NECESSARY CHANGE: Define myEmail for the stream filter
+    final String myEmail = FirebaseAuth.instance.currentUser?.email ?? "Unknown";
+
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.userName, style: const TextStyle(color: Colors.black, fontSize: 18)),
@@ -129,7 +139,6 @@ class _ChatMessagingPageState extends State<ChatMessagingPage> {
                 }
 
                 final docs = snapshot.data!.docs;
-                final String myEmail = FirebaseAuth.instance.currentUser?.email ?? "Unknown";
 
                 return ListView.builder(
                   reverse: true,
@@ -138,8 +147,9 @@ class _ChatMessagingPageState extends State<ChatMessagingPage> {
                   itemBuilder: (context, index) {
                     final data = docs[index].data() as Map<String, dynamic>;
 
-                    final bool isRelevant = (data['sender'] == myEmail && data['receiver'] == widget.userName) ||
-                                           (data['sender'] == widget.userName && data['receiver'] == myEmail);
+                    // NECESSARY CHANGE: Filter using Email vs Email
+                    final bool isRelevant = (data['sender'] == myEmail && data['receiver'] == widget.userEmail) ||
+                                           (data['sender'] == widget.userEmail && data['receiver'] == myEmail);
                     
                     if (!isRelevant) return const SizedBox.shrink();
 
