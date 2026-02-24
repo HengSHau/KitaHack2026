@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'edit_profile_page.dart';
+import 'feedback_page.dart';
+import 'help_center_page.dart';
+
+const Color kThemeGreen = Color(0xFF00B14F); 
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -6,78 +11,100 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50], // 浅灰色的背景，让白色卡片更凸显
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text(
-          'Settings',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 28, // 大标题风格
-            color: Colors.black,
-          ),
-        ),
+        title: const Text('Settings', 
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 26, color: Colors.black)),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        centerTitle: false, // 标题靠左
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade200),
-            // 加一点淡淡的阴影，提升质感
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+        child: Column(
+          children: [
+            _buildProfileHeader(),
+            const SizedBox(height: 24),
+
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 5))
+                ],
               ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildSettingButton('Edit Profile', () {
-                // TODO: 点击编辑资料
-              }),
-              const SizedBox(height: 16),
-              _buildSettingButton('Feedback', () {
-                // TODO: 点击反馈
-              }),
-              const SizedBox(height: 16),
-              _buildSettingButton('Help Center', () {
-                // TODO: 点击帮助中心
-              }),
-            ],
-          ),
+              child: Column(
+                children: [
+                  _buildGreenButton(Icons.person_outline, 'Edit Profile', () {
+                    Navigator.push(
+                      context, 
+                      MaterialPageRoute(builder:(context) => const EditProfilePage()),
+                    );
+                  }),
+                  const Divider(height: 32, thickness: 0.5),
+                  _buildGreenButton(Icons.feedback_outlined, 'Feedback', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder:(context) => FeedbackPage()),
+                    );
+                  }),
+                  const Divider(height: 32, thickness: 0.5),
+                  _buildGreenButton(Icons.help_outline, 'Help Center', () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => HelpCenterPage()),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  // 统一的灰色按钮样式
-  Widget _buildSettingButton(String title, VoidCallback onPressed) {
-    return SizedBox(
-      width: double.infinity,
-      height: 48,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.grey[400], // 设计图里的灰色
-          foregroundColor: Colors.white,     // 文字颜色
-          elevation: 0, // 去掉按钮自带的阴影，保持扁平
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8), // 稍微圆角
+  Widget _buildProfileHeader() {
+    return Row(
+      children: [
+        const CircleAvatar(
+          radius: 35,
+          backgroundColor: kThemeGreen,
+          child: Icon(Icons.person, size: 40, color: Colors.white),
+        ),
+        const SizedBox(width: 15),
+        const Text(
+          'King Sen', 
+          style: TextStyle(
+            fontSize: 24, 
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
           ),
         ),
-        child: Text(
-          title,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-        ),
+      ],
+    );
+  }
+
+  Widget _buildGreenButton(IconData icon, String title, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: kThemeGreen.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: kThemeGreen, size: 22),
+          ),
+          const SizedBox(width: 16),
+          Text(title, 
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black87)),
+          const Spacer(),
+          const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+        ],
       ),
     );
   }
