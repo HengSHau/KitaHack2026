@@ -25,7 +25,7 @@ class AdvanceData{
       await data.collection("Advance Time").add({
         'UserID': user.uid,
         'Date&Time': scheduletime,
-        'status': 'panding',
+        'status': 'pending',
         'createAt': FieldValue.serverTimestamp(),
       });
 

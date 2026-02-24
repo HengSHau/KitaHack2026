@@ -66,25 +66,26 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-  void _NearlyOtherUsers() {
-  _userService.getNearbyUsersStream().listen((users) {
-    if (!mounted) return; // User chang to other page stop the function
-
-    final newMarkers = users.map((u) {
-      return Marker(
-        markerId: MarkerId(u['id']),
-        position: LatLng(u['lat'], u['lng']),
-        infoWindow: InfoWindow(title: u['username']),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-      );
-    }).toSet();
-
-    if (_markers.length != newMarkers.length) {
+void _NearlyOtherUsers() {
+  try {
+    _userService.getNearbyUsersStream().listen((users) {
+      if (!mounted) return;
       setState(() {
-        _markers = newMarkers;
+        _markers = users.map((u) {
+          return Marker(
+            markerId: MarkerId(u['id']),
+            position: LatLng(u['lat'] ?? 0.0, u['lng'] ?? 0.0),
+            infoWindow: InfoWindow(title: u['username']),
+            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+          );
+        }).toSet();
       });
-    }
-  });
+    }, onError: (error) {
+      print("Stream Error: $error");
+    });
+  } catch (e) {
+    print("NearlyOtherUsers Catch: $e");
+  }
 }
 
   void _showMatchDialog() {
