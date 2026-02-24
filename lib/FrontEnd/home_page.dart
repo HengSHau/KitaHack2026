@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:kitahack2026/backend/home_backend.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart';
 import 'match_in_advance_page.dart';
 import 'settings_page.dart';
 import 'chat_page.dart';
@@ -14,6 +15,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  Set<Marker> _markers = {};
   int _selectedIndex = 0;
   
   //Map controller
@@ -22,6 +24,7 @@ class _HomePageState extends State<HomePage> {
 
   final UserService _userService = UserService();
   
+  
   String _currentUsername = "Guest";
 
   @override
@@ -29,6 +32,9 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _loadName();
     _startLocationTracking();
+    Future.delayed(const Duration(seconds: 1), () {
+    _NearlyOtherUsers();
+  });
   }
 
   void _loadName() async {
@@ -47,10 +53,38 @@ class _HomePageState extends State<HomePage> {
   if (status.isGranted) {
     // if accept start tracking
     _userService.updateLiveLocation();
+    Geolocator.getPositionStream().listen((Position position) {
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLng(
+          LatLng(position.latitude, position.longitude),
+        ),
+      );
+    });
   } else {
     // reject
     print("User has already reject tracking request!");
   }
+}
+
+  void _NearlyOtherUsers() {
+  _userService.getNearbyUsersStream().listen((users) {
+    if (!mounted) return; // User chang to other page stop the function
+
+    final newMarkers = users.map((u) {
+      return Marker(
+        markerId: MarkerId(u['id']),
+        position: LatLng(u['lat'], u['lng']),
+        infoWindow: InfoWindow(title: u['username']),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+      );
+    }).toSet();
+
+    if (_markers.length != newMarkers.length) {
+      setState(() {
+        _markers = newMarkers;
+      });
+    }
+  });
 }
 
   void _showMatchDialog() {
@@ -131,6 +165,7 @@ class _HomePageState extends State<HomePage> {
                     target: LatLng(3.055, 101.69), 
                     zoom: 14.0,
                   ),
+                  markers: _markers,
                   mapType: MapType.normal, 
                   myLocationEnabled: true, 
                   myLocationButtonEnabled: false, 
