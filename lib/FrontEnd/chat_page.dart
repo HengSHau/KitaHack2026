@@ -10,6 +10,7 @@ class ChatSelectionPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Unique Key: Your Email
     final String myEmail = FirebaseAuth.instance.currentUser?.email ?? "";
 
     return Scaffold(
@@ -25,6 +26,10 @@ class ChatSelectionPage extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance.collection('users').snapshots(),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text("Error loading users: ${snapshot.error}"));
+          }
+
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -33,40 +38,28 @@ class ChatSelectionPage extends StatelessWidget {
             return const Center(child: Text("No users found."));
           }
 
-          final docs = snapshot.data!.docs.where((doc) => doc.id != myEmail).toList();
+          // FIXED: Filter out yourself by checking the 'email' field in the document
+          final docs = snapshot.data!.docs.where((doc) {
+            final userData = doc.data() as Map<String, dynamic>;
+            final String emailInDb = userData['email'] ?? ""; 
+            return emailInDb != myEmail; 
+          }).toList();
+
+          if (docs.isEmpty) {
+            return const Center(child: Text("No other users available."));
+          }
 
           return ListView.builder(
             itemCount: docs.length,
             itemBuilder: (context, index) {
               final userData = docs[index].data() as Map<String, dynamic>;
               final String name = userData['username'] ?? "User";
-              final String avatarLetter = name.isNotEmpty ? name[0].toUpperCase() : "U";
+              final String email = userData['email'] ?? docs[index].id;
 
-              return ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                leading: CircleAvatar(
-                  radius: 26,
-                  backgroundColor: kPrimaryGreen.withOpacity(0.2),
-                  child: Text(
-                    avatarLetter, 
-                    style: const TextStyle(fontSize: 20, color: kPrimaryGreen, fontWeight: FontWeight.bold)
-                  ),
-                ),
-                title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text("Available for carpool"),
-                trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-                onTap: () {
-                  // NECESSARY CHANGE: Pass email to the next page
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ChatMessagingPage(
-                        userName: name,
-                        userEmail: userData['email'] ?? docs[index].id, 
-                      ),
-                    ),
-                  );
-                },
+              return ChatContactTile(
+                contactName: name,
+                contactEmail: email,
+                myEmail: myEmail,
               );
             },
           );
@@ -76,15 +69,113 @@ class ChatSelectionPage extends StatelessWidget {
   }
 }
 
+class ChatContactTile extends StatelessWidget {
+  final String contactName;
+  final String contactEmail;
+  final String myEmail;
+
+  const ChatContactTile({
+    super.key,
+    required this.contactName,
+    required this.contactEmail,
+    required this.myEmail,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      // Listen for messages where I am a participant
+      stream: FirebaseFirestore.instance
+          .collection('Chat')
+          .where('participants', arrayContains: myEmail)
+          .orderBy('timestamp', descending: true)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          // If previews are blank, check browser console (F12) for index link
+          print("Preview Error: ${snapshot.error}");
+          return const SizedBox.shrink(); 
+        }
+
+        String lastMessage = ""; 
+        bool isUnread = false;
+
+        if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+          // Isolate the conversation with this specific contact
+          final relevantDocs = snapshot.data!.docs.where((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            final List participants = data['participants'] ?? [];
+            return participants.contains(contactEmail);
+          }).toList();
+
+          if (relevantDocs.isNotEmpty) {
+            final data = relevantDocs.first.data() as Map<String, dynamic>;
+            lastMessage = data['text'] ?? "";
+            // BOLD LOGIC: Sent to me and isRead is false
+            isUnread = data['receiver'] == myEmail && (data['isRead'] == false);
+          } else {
+            lastMessage = "Start a conversation"; 
+          }
+        }
+
+        return ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          leading: CircleAvatar(
+            radius: 26,
+            backgroundColor: kPrimaryGreen.withOpacity(0.2),
+            child: Text(contactName.isNotEmpty ? contactName[0].toUpperCase() : "U", 
+              style: const TextStyle(fontSize: 20, color: kPrimaryGreen, fontWeight: FontWeight.bold)),
+          ),
+          title: Text(contactName, 
+            style: TextStyle(fontWeight: isUnread ? FontWeight.w900 : FontWeight.bold)),
+          subtitle: Text(
+            lastMessage,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: isUnread ? Colors.black : Colors.grey,
+              fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+          trailing: isUnread 
+            ? const CircleAvatar(radius: 5, backgroundColor: kPrimaryGreen) 
+            : const Icon(Icons.chevron_right, color: Colors.grey),
+          onTap: () async {
+            // MARK AS READ: Clear the bold status
+            var unread = await FirebaseFirestore.instance
+              .collection('Chat')
+              .where('sender', isEqualTo: contactEmail)
+              .where('receiver', isEqualTo: myEmail)
+              .where('isRead', isEqualTo: false)
+              .get();
+
+            for (var doc in unread.docs) {
+              await doc.reference.update({'isRead': true});
+            }
+
+            if (context.mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ChatMessagingPage(
+                    userName: contactName,
+                    userEmail: contactEmail,
+                  ),
+                ),
+              );
+            }
+          },
+        );
+      },
+    );
+  }
+}
+
 class ChatMessagingPage extends StatefulWidget {
   final String userName;
-  final String userEmail; // NECESSARY CHANGE: Define userEmail
+  final String userEmail;
 
-  const ChatMessagingPage({
-    super.key, 
-    required this.userName, 
-    required this.userEmail // NECESSARY CHANGE: Add to constructor
-  });
+  const ChatMessagingPage({super.key, required this.userName, required this.userEmail});
 
   @override
   State<ChatMessagingPage> createState() => _ChatMessagingPageState();
@@ -101,17 +192,19 @@ class _ChatMessagingPageState extends State<ChatMessagingPage> {
 
     _messageController.clear();
 
+    // Data Bridge: Saving participants and isRead
     await FirebaseFirestore.instance.collection('Chat').add({
       'text': text,
       'sender': myEmail,
+      'receiver': widget.userEmail,
+      'participants': [myEmail, widget.userEmail],
       'timestamp': FieldValue.serverTimestamp(),
-      'receiver': widget.userEmail, // NECESSARY CHANGE: Use Email ID
+      'isRead': false,
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    // NECESSARY CHANGE: Define myEmail for the stream filter
     final String myEmail = FirebaseAuth.instance.currentUser?.email ?? "Unknown";
 
     return Scaffold(
@@ -127,18 +220,27 @@ class _ChatMessagingPageState extends State<ChatMessagingPage> {
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('Chat')
+                  .where('participants', arrayContains: myEmail)
                   .orderBy('timestamp', descending: true)
                   .snapshots(),
               builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  print("Messaging Error: ${snapshot.error}");
+                  return const Center(child: Text("Error: Check Browser Console (F12)"));
+                }
+
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                final docs = (snapshot.data?.docs ?? []).where((doc) {
+                   final data = doc.data() as Map<String, dynamic>;
+                   return data['participants'].contains(widget.userEmail);
+                }).toList();
+
+                if (docs.isEmpty) {
                   return const Center(child: Text("Say Hi to Start Conversation!"));
                 }
-
-                final docs = snapshot.data!.docs;
 
                 return ListView.builder(
                   reverse: true,
@@ -146,13 +248,6 @@ class _ChatMessagingPageState extends State<ChatMessagingPage> {
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
                     final data = docs[index].data() as Map<String, dynamic>;
-
-                    // NECESSARY CHANGE: Filter using Email vs Email
-                    final bool isRelevant = (data['sender'] == myEmail && data['receiver'] == widget.userEmail) ||
-                                           (data['sender'] == widget.userEmail && data['receiver'] == myEmail);
-                    
-                    if (!isRelevant) return const SizedBox.shrink();
-
                     final bool isMe = data['sender'] == myEmail;
 
                     return Align(
