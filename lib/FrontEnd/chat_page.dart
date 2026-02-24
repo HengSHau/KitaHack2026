@@ -1,4 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 const Color kPrimaryGreen = Color(0xFF00B14F);
 const Color kLightGreenBg = Color(0xFFF1F8F3);
@@ -8,12 +10,8 @@ class ChatSelectionPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<Map<String, String>> users = [
-      {"name": "Ali (Driver)", "status": "Going to APU Campus", "avatar": "A"},
-      {"name": "Sarah (Passenger)", "status": "Waiting at Parkhill", "avatar": "S"},
-      {"name": "John (Driver)", "status": "Leaving Pavilion Bukit Jalil", "avatar": "J"},
-      {"name": "Mei (Passenger)", "status": "Needs ride to LRT station", "avatar": "M"},
-    ];
+    // FIXED: Removed the semicolon error and added proper current user check
+    final String myEmail = FirebaseAuth.instance.currentUser?.email ?? "";
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -25,29 +23,49 @@ class ChatSelectionPage extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
       ),
-      body: ListView.builder(
-        itemCount: users.length,
-        itemBuilder: (context, index) {
-          final user = users[index];
-          return ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            leading: CircleAvatar(
-              radius: 26,
-              backgroundColor: kPrimaryGreen.withOpacity(0.2),
-              child: Text(
-                user["avatar"]!, 
-                style: const TextStyle(fontSize: 20, color: kPrimaryGreen, fontWeight: FontWeight.bold)
-              ),
-            ),
-            title: Text(user["name"]!, style: const TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text(user["status"]!, style: TextStyle(color: Colors.grey.shade600)),
-            trailing: const Icon(Icons.chevron_right, color: Colors.grey),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ChatMessagingPage(userName: user["name"]!),
+      // FIXED: Replaced static ListView with StreamBuilder to use proper Firebase users
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance.collection('users').snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return const Center(child: Text("No users found."));
+          }
+
+          // Filter out your own account from the list
+          final docs = snapshot.data!.docs.where((doc) => doc.id != myEmail).toList();
+
+          return ListView.builder(
+            itemCount: docs.length,
+            itemBuilder: (context, index) {
+              final userData = docs[index].data() as Map<String, dynamic>;
+              final String name = userData['username'] ?? "User";
+              final String avatarLetter = name.isNotEmpty ? name[0].toUpperCase() : "U";
+
+              return ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                leading: CircleAvatar(
+                  radius: 26,
+                  backgroundColor: kPrimaryGreen.withOpacity(0.2),
+                  child: Text(
+                    avatarLetter, 
+                    style: const TextStyle(fontSize: 20, color: kPrimaryGreen, fontWeight: FontWeight.bold)
+                  ),
                 ),
+                title: Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text("Available for carpool"),
+                trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ChatMessagingPage(userName: name),
+                    ),
+                  );
+                },
               );
             },
           );
@@ -67,15 +85,20 @@ class ChatMessagingPage extends StatefulWidget {
 
 class _ChatMessagingPageState extends State<ChatMessagingPage> {
   final TextEditingController _messageController = TextEditingController();
-  final List<Map<String, dynamic>> _messages = [
-    {"text": "Hi! Are you ready for the carpool?", "isMe": false},
-  ];
 
-  void _sendMessage() {
+  void _sendMessage() async {
     if (_messageController.text.trim().isEmpty) return;
-    setState(() {
-      _messages.add({"text": _messageController.text, "isMe": true});
-      _messageController.clear();
+
+    final String text = _messageController.text.trim();
+    final String myEmail = FirebaseAuth.instance.currentUser?.email ?? "Unknown";
+
+    _messageController.clear();
+
+    await FirebaseFirestore.instance.collection('Chat').add({
+      'text': text,
+      'sender': myEmail,
+      'timestamp': FieldValue.serverTimestamp(),
+      'receiver': widget.userName,
     });
   }
 
@@ -91,44 +114,70 @@ class _ChatMessagingPageState extends State<ChatMessagingPage> {
       body: Column(
         children: [
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final msg = _messages[index];
-                final bool isMe = msg['isMe'];
-                return Align(
-                  alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: isMe ? kPrimaryGreen : Colors.white,
-                      borderRadius: BorderRadius.only(
-                        topLeft: const Radius.circular(20),
-                        topRight: const Radius.circular(20),
-                        bottomLeft: Radius.circular(isMe ? 20 : 0),
-                        bottomRight: Radius.circular(isMe ? 0 : 20),
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('Chat')
+                  .orderBy('timestamp', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(child: Text("Say Hi to Start Conversation!"));
+                }
+
+                final docs = snapshot.data!.docs;
+                final String myEmail = FirebaseAuth.instance.currentUser?.email ?? "Unknown";
+
+                return ListView.builder(
+                  reverse: true,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
+                    final data = docs[index].data() as Map<String, dynamic>;
+
+                    final bool isRelevant = (data['sender'] == myEmail && data['receiver'] == widget.userName) ||
+                                           (data['sender'] == widget.userName && data['receiver'] == myEmail);
+                    
+                    if (!isRelevant) return const SizedBox.shrink();
+
+                    final bool isMe = data['sender'] == myEmail;
+
+                    return Align(
+                      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: isMe ? kPrimaryGreen : Colors.white,
+                          borderRadius: BorderRadius.only(
+                            topLeft: const Radius.circular(20),
+                            topRight: const Radius.circular(20),
+                            bottomLeft: Radius.circular(isMe ? 20 : 0),
+                            bottomRight: Radius.circular(isMe ? 0 : 20),
+                          ),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2))
+                          ],
+                        ),
+                        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+                        child: Text(
+                          data['text'] ?? "",
+                          style: TextStyle(color: isMe ? Colors.white : Colors.black87, fontSize: 15),
+                        ),
                       ),
-                      boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2))
-                      ],
-                    ),
-                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-                    child: Text(
-                      msg['text'], 
-                      style: TextStyle(color: isMe ? Colors.white : Colors.black87, fontSize: 15)
-                    ),
-                  ),
+                    );
+                  },
                 );
               },
             ),
           ),
           
-          // Textbox
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: Colors.white,
               boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)]
             ),
