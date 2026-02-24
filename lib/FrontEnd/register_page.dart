@@ -62,7 +62,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CustomTextField(label: "Username", hint: "Username",controller: username,),
+                    CustomTextField(label: "Email", hint: "example@gmail.com",controller: email,),
                     const SizedBox(height: 15),
 
                     CustomTextField(label: "Password", hint: "Password", isPassword: true,controller: password,),
@@ -71,7 +71,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     CustomTextField(label: "Confirm Password", hint: "Password", isPassword: true,controller: comfirmpassword,),
                     const SizedBox(height: 15),
 
-                    CustomTextField(label: "Email", hint: "Email",controller: email,),
+                    CustomTextField(label: "Username", hint: "Username",controller: username,),
                     const SizedBox(height: 15),
 
                     const Text(
@@ -85,7 +85,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
                       value: selectedPersonality,
-                      hint: const Text("Introverted", style: TextStyle(color: Colors.grey)), // 默认提示
+                      hint: const Text("Introverted", style: TextStyle(color: Colors.grey)),
                       decoration: InputDecoration(
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                         border: OutlineInputBorder(

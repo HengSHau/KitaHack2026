@@ -54,4 +54,18 @@ class UserService {
       }
     });
   }
+
+  Stream<List<Map<String, dynamic>>> getNearbyUsersStream() {
+  return _firestore.collection('users').snapshots().map((snapshot) {
+    return snapshot.docs
+        .where((doc) => doc.id != _auth.currentUser?.uid) // filter yourself to get other location
+        .map((doc) => {
+              'id': doc.id,
+              'username': doc.get('username') ?? 'User',
+              'lat': doc.get('latitude') ?? 0.0,
+              'lng': doc.get('longitude') ?? 0.0,
+            })
+        .toList();
+    });
+  }
 }
