@@ -3,6 +3,7 @@ import 'package:kitahack2026/backend/home_backend.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart'; 
 import 'match_in_advance_page.dart';
 import 'settings_page.dart';
 import 'chat_page.dart';
@@ -36,6 +37,33 @@ class _HomePageState extends State<HomePage> {
     _NearlyOtherUsers();
   });
   }
+
+  Future<void> _handleSearch(String address) async {
+  // 1. 叫后台去查坐标 (纯数据)
+  LatLng? target = await _userService.getCoordsFromAddress(address);
+
+  if (target != null && mounted) {
+    // 2. 前台负责操作控制器 (纯 UI)
+    _mapController?.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: target, zoom: 16.0),
+      ),
+    );
+    
+    // 更新 Marker
+    setState(() {
+      _markers.add(Marker(
+        markerId: MarkerId(address),
+        position: target,
+        infoWindow: InfoWindow(title: address),
+      ));
+    });
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Location not found: $address")),
+    );
+  }
+}
 
   void _loadName() async {
     String name = await _userService.getCurrentUsername();
@@ -210,8 +238,13 @@ void _NearlyOtherUsers() {
                             const Icon(Icons.search, color: Colors.grey),
                             const SizedBox(width: 10),
 
-                            const Expanded(
+                            Expanded(
                               child: TextField(
+                                onSubmitted: (value) {
+                                  if (value.isNotEmpty) {
+                                    _handleSearch(value); //Enter address to search
+                                  }
+                                },
                                 decoration: InputDecoration(
                                   hintText: "Search",
                                   border: InputBorder.none,
@@ -308,6 +341,7 @@ void _NearlyOtherUsers() {
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
+          _handleSearch(fullLocationName);
           print("你点击了快捷地址: $fullLocationName");
         },
         borderRadius: BorderRadius.circular(20),
