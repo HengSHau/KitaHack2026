@@ -21,7 +21,35 @@ class UserService {
     }
     return null; 
   }
+
+  // Use to get the destination of user set
+  Future<void> updateDestination(String address, double lat, double lng) async {
+      final user = _auth.currentUser;
+      if (user != null) {
+        await _firestore.collection('users').doc(user.uid).update({
+          'destinationName': address,
+          'destLatitude': lat,
+          'destLongitude': lng,
+          'isNavigating': true, 
+          'lastUpdated': FieldValue.serverTimestamp(),
+        });
+      }
+    }
   
+  // use to clear polyline when arried or cancel
+  Future<void> clearDestination() async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      await _firestore.collection('users').doc(user.uid).update({
+        'destinationName': FieldValue.delete(),
+        'destLatitude': FieldValue.delete(),
+        'destLongitude': FieldValue.delete(),
+        'isNavigating': false,
+      });
+    }
+  }
+
+
   // Used to get username by login accout
   Future<String> getCurrentUsername() async {
     try {
