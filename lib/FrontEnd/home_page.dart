@@ -5,10 +5,11 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 import 'package:firebase_auth/firebase_auth.dart';    
-import 'package:geocoding/geocoding.dart'; 
+import 'package:geocoding/geocoding.dart';
 import 'match_in_advance_page.dart';
 import 'settings_page.dart';
 import 'chat_page.dart';
+import 'matching_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -18,6 +19,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  final TextEditingController _destinationController = TextEditingController();
+  
   Set<Marker> _markers = {};
   int _selectedIndex = 0;
   bool _followUserLocation = true;
@@ -142,7 +145,16 @@ class _HomePageState extends State<HomePage> {
                   width: double.infinity,
                   height: 45,
                   child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      String destination = _destinationController.text.trim();
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => MatchingPage(destination: destination),
+                        ),
+                      );
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2ECC71),
                       foregroundColor: Colors.white,
@@ -255,6 +267,7 @@ class _HomePageState extends State<HomePage> {
 
                             Expanded(
                               child: TextField(
+                                controller: _destinationController,
                                 onSubmitted: (value) {
                                   if (value.isNotEmpty) {
                                     _handleSearch(value); //Enter address to search
@@ -329,12 +342,20 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildLocationChip(String fullLocationName) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 95),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-      )  
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _destinationController.text = fullLocationName;
+        });
+        _handleSearch(fullLocationName);
+      },
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 95),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+        )  
+      ),
     );
   }
 }
