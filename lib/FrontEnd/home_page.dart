@@ -5,6 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 import 'package:firebase_auth/firebase_auth.dart';    
+import 'package:geocoding/geocoding.dart'; 
 import 'match_in_advance_page.dart';
 import 'settings_page.dart';
 import 'chat_page.dart';
@@ -19,6 +20,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   Set<Marker> _markers = {};
   int _selectedIndex = 0;
+  bool _followUserLocation = true;
   
   GoogleMapController? _mapController;  
   final LatLng _defaultLocation = const LatLng(3.055, 101.69);
@@ -35,6 +37,37 @@ class _HomePageState extends State<HomePage> {
       _NearlyOtherUsers();
     });
   }
+
+  Future<void> _handleSearch(String address) async {
+  // 1. 叫后台去查坐标 (纯数据)
+  LatLng? target = await _userService.getCoordsFromAddress(address);
+
+  if (target != null && mounted) {
+    // 2. 前台负责操作控制器 (纯 UI)
+    setState(() {
+      _followUserLocation = false;
+    });
+
+    _mapController?.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: target, zoom: 16.0),
+      ),
+    );
+    
+    // 更新 Marker
+    setState(() {
+      _markers.add(Marker(
+        markerId: MarkerId(address),
+        position: target,
+        infoWindow: InfoWindow(title: address),
+      ));
+    });
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Location not found: $address")),
+    );
+  }
+}
 
   void _loadName() async {
     String name = await _userService.getCurrentUsername();
@@ -216,11 +249,17 @@ class _HomePageState extends State<HomePage> {
                         child: const Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            SizedBox(width: 16),
-                            Icon(Icons.search, color: Colors.grey),
-                            SizedBox(width: 10),
+                            const SizedBox(width: 16),
+                            const Icon(Icons.search, color: Colors.grey),
+                            const SizedBox(width: 10),
+
                             Expanded(
                               child: TextField(
+                                onSubmitted: (value) {
+                                  if (value.isNotEmpty) {
+                                    _handleSearch(value); //Enter address to search
+                                  }
+                                },
                                 decoration: InputDecoration(
                                   hintText: "Search",
                                   border: InputBorder.none,
@@ -295,6 +334,13 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          _handleSearch(fullLocationName);
+          print("你点击了快捷地址: $fullLocationName");
+        },
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
