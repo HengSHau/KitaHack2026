@@ -9,6 +9,7 @@ class UserService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  // Use to get address to find it in google map
   Future<LatLng?> getCoordsFromAddress(String address) async {
     try {
       List<geo.Location> locations = await geo.locationFromAddress(address);
@@ -18,17 +19,17 @@ class UserService {
     } catch (e) {
       print("Geocoding error: $e");
     }
-    return null; // 找不到就返回空
+    return null; 
   }
-
-  // 获取当前登录用户的用户名
+  
+  // Used to get username by login accout
   Future<String> getCurrentUsername() async {
     try {
       User? user = _auth.currentUser;
       if (user != null) {
         DocumentSnapshot doc = await _firestore.collection('users').doc(user.uid).get();
         if (doc.exists) {
-          // 这里的 'username' 必须和你注册时存入的 Key 一模一样
+          // validate the username is correctly by login account
           return doc.get('username') ?? "User";
         }
       }
@@ -39,39 +40,47 @@ class UserService {
     }
   }
 
-  // 退出登录逻辑
+  // logout
   Future<void> signOut() async {
+    final user = _auth.currentUser;
+    if (user != null){
+      await _firestore.collection("user").doc(user.uid).update({
+        'OnlineStatus' : false,
+        'LastOnlineTime' : FieldValue.serverTimestamp(),
+      });
+    }
     await _auth.signOut();
   }
-
-  // 实时更新位置到 Firestore
+  
+  // update user location
   Future<void> updateLiveLocation() async {
-    // 1. 检查定位服务是否开启
+    // Check GPS is open in user device
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) return;
 
-    // 2. 持续监听位置变化
+    // real-time update location
     Geolocator.getPositionStream(
       locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high, // 高精度
-        distanceFilter: 10, // 用户移动超过 10 米才更新数据库，节省流量和电量
+        accuracy: LocationAccuracy.high, 
+        distanceFilter: 10, 
       ),
     ).listen((Position position) {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        // 3. 将经纬度写入 Firebase
+        // locatio write into firabase
         FirebaseFirestore.instance.collection('users').doc(user.uid).update({
           'latitude': position.latitude,
           'longitude': position.longitude,
-          'lastUpdated': FieldValue.serverTimestamp(), // 记录最后更新时间
+          'OnlineStatus': true,
+          'lastUpdated': FieldValue.serverTimestamp(), // record updated time
         });
-        print("位置已更新: ${position.latitude}, ${position.longitude}");
+        print("location updated: ${position.latitude}, ${position.longitude}");
       }
     });
   }
 
   Stream<List<Map<String, dynamic>>> getNearbyUsersStream() {
-  return _firestore.collection('users').snapshots().map((snapshot) {
+  return _firestore.collection('users').where('OnlineStatus', isEqualTo: true).snapshots().map((snapshot) {
     return snapshot.docs
         .where((doc) => doc.id != _auth.currentUser?.uid) // filter yourself to get other location
         .map((doc) => {
