@@ -76,7 +76,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
         CameraPosition(target: target, zoom: 16.0),
       ),
     );
-    
+
+    SetDestinationDialog(address, target);
+
     // Updated Marker
     setState(() {
       _markers.add(Marker(
@@ -90,6 +92,54 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
       SnackBar(content: Text("Location not found: $address")),
     );
   }
+  }
+
+  void SetDestinationDialog(String address, LatLng target) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Destination"),
+        content: Text("Comfirm '$address' set to destination?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _confirmNavigation(address, target); // 执行确认逻辑
+            },
+            child: const Text("Set"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmNavigation(String address, LatLng target) async {
+  setState(() {
+    destinationp = target;
+
+    _markers.add(Marker(
+      markerId: const MarkerId("destination"),
+      position: target,
+      infoWindow: InfoWindow(title: "目的地: $address"),
+      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+    ));
+
+    if (currentp != null) {
+        line.add(Polyline(
+        polylineId: const PolylineId("route"),
+        points: [currentp!, destinationp!],
+        color: Colors.blue,
+        width: 5,
+      ));
+    }
+  });
+
+  await _userService.updateDestination(address, target.latitude, target.longitude);
+}
 
   void _loadName() async {
     String name = await _userService.getCurrentUsername();
@@ -100,6 +150,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
     }
   }
 
+  //ensure that the username will be showing correctly while profile changing
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -111,6 +162,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
     if (status.isGranted) {
       _userService.updateLiveLocation();
       Geolocator.getPositionStream().listen((Position position) {
+        currentp = LatLng(position.latitude, position.longitude);
+        if (destinationp != null) {
+        // real-time update personal location with destination distance
+        line.removeWhere((p) => p.polylineId.value == "route");
+        line.add(Polyline(
+        polylineId: const PolylineId("route"),
+        points: [currentp!, destinationp!],
+        color: Colors.blue,
+        width: 5,
+      ));
+    }
         _mapController?.animateCamera(
           CameraUpdate.newLatLng(
             LatLng(position.latitude, position.longitude),
@@ -237,6 +299,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
                     zoom: 14.0,
                   ),
                   markers: _markers,
+                  polylines: line,
                   mapType: MapType.normal, 
                   myLocationEnabled: true, 
                   myLocationButtonEnabled: false, 
