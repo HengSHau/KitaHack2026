@@ -246,7 +246,7 @@ class _HomePageState extends State<HomePage> {
                           color: Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(30),
                         ),
-                        child: const Row(
+                        child: Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             const SizedBox(width: 16),
@@ -334,21 +334,7 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          _handleSearch(fullLocationName);
-          print("你点击了快捷地址: $fullLocationName");
-        },
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        fullLocationName, 
-        style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13, color: Colors.black87),
-        overflow: TextOverflow.ellipsis,
-        maxLines: 1,
-      ),
+      )  
     );
   }
 }
