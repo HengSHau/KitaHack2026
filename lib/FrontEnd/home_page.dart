@@ -5,10 +5,11 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 import 'package:firebase_auth/firebase_auth.dart';    
-import 'package:geocoding/geocoding.dart'; 
+import 'package:geocoding/geocoding.dart';
 import 'match_in_advance_page.dart';
 import 'settings_page.dart';
 import 'chat_page.dart';
+import 'matching_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -18,6 +19,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
+  final TextEditingController _destinationController = TextEditingController();
+  
   Set<Marker> _markers = {};
   int _selectedIndex = 0;
   bool _followUserLocation = true;
@@ -87,7 +90,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
       SnackBar(content: Text("Location not found: $address")),
     );
   }
-}
 
   void _loadName() async {
     String name = await _userService.getCurrentUsername();
@@ -171,7 +173,16 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
                   width: double.infinity,
                   height: 45,
                   child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      String destination = _destinationController.text.trim();
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => MatchingPage(destination: destination),
+                        ),
+                      );
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF2ECC71),
                       foregroundColor: Colors.white,
@@ -284,6 +295,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
 
                             Expanded(
                               child: TextField(
+                                controller: _destinationController,
                                 onSubmitted: (value) {
                                   if (value.isNotEmpty) {
                                     _handleSearch(value); //Enter address to search
@@ -306,6 +318,41 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
                       Wrap(
                         spacing: 12.0, 
                         runSpacing: 10.0,
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          // Show eta
+                          Expanded(
+                            child: _buildDetailBox(
+                              Icons.access_time_filled, 
+                              "Est. Time", 
+                              "15 - 20 mins", // 这里的数值可以根据 handleSearch 结果动态更新
+                              Colors.blue.shade50,
+                              Colors.blue,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          // Description input
+                          Expanded(
+                            flex: 2,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const TextField(
+                                decoration: InputDecoration(
+                                  hintText: "Add description (e.g. at Gate A)",
+                                  hintStyle: TextStyle(fontSize: 12),
+                                  border: InputBorder.none,
+                                  icon: Icon(Icons.edit_note, size: 20, color: Colors.grey),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const Spacer(),
                       SizedBox(
@@ -353,12 +400,44 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
   }
 
   Widget _buildLocationChip(String fullLocationName) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _destinationController.text = fullLocationName;
+        });
+        _handleSearch(fullLocationName);
+      },
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 95),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+        )  
+      ),
+    );
+  }
+
+  Widget _buildDetailBox(IconData icon, String label, String value, Color bgColor, Color iconColor) {
     return Container(
-      constraints: const BoxConstraints(maxWidth: 95),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-      )
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: iconColor),
+              const SizedBox(width: 4),
+              Text(label, style: TextStyle(fontSize: 10, color: iconColor.withOpacity(0.8))),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        ],
+      ),
     );
   }
 }
