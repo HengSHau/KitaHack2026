@@ -3,6 +3,8 @@ import 'package:kitahack2026/backend/home_backend.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; 
+import 'package:firebase_auth/firebase_auth.dart';    
 import 'package:geocoding/geocoding.dart'; 
 import 'match_in_advance_page.dart';
 import 'settings_page.dart';
@@ -18,14 +20,12 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   Set<Marker> _markers = {};
   int _selectedIndex = 0;
+  bool _followUserLocation = true;
   
-  //Map controller
-  GoogleMapController? _mapController;  // set an default location
-  final LatLng _defaultLocation=const LatLng(3.055,101.69);
+  GoogleMapController? _mapController;  
+  final LatLng _defaultLocation = const LatLng(3.055, 101.69);
 
   final UserService _userService = UserService();
-  
-  
   String _currentUsername = "Guest";
 
   @override
@@ -34,8 +34,8 @@ class _HomePageState extends State<HomePage> {
     _loadName();
     _startLocationTracking();
     Future.delayed(const Duration(seconds: 1), () {
-    _NearlyOtherUsers();
-  });
+      _NearlyOtherUsers();
+    });
   }
 
   Future<void> _handleSearch(String address) async {
@@ -44,6 +44,10 @@ class _HomePageState extends State<HomePage> {
 
   if (target != null && mounted) {
     // 2. 前台负责操作控制器 (纯 UI)
+    setState(() {
+      _followUserLocation = false;
+    });
+
     _mapController?.animateCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(target: target, zoom: 16.0),
@@ -74,56 +78,56 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void _startLocationTracking() async {
-  // get location request
-  var status = await Permission.location.request();
-  
-  if (status.isGranted) {
-    // if accept start tracking
-    _userService.updateLiveLocation();
-    Geolocator.getPositionStream().listen((Position position) {
-      _mapController?.animateCamera(
-        CameraUpdate.newLatLng(
-          LatLng(position.latitude, position.longitude),
-        ),
-      );
-    });
-  } else {
-    // reject
-    print("User has already reject tracking request!");
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadName();
   }
-}
 
-void _NearlyOtherUsers() {
-  try {
-    _userService.getNearbyUsersStream().listen((users) {
-      if (!mounted) return;
-      setState(() {
-        _markers = users.map((u) {
-          return Marker(
-            markerId: MarkerId(u['id']),
-            position: LatLng(u['lat'] ?? 0.0, u['lng'] ?? 0.0),
-            infoWindow: InfoWindow(title: u['username']),
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
-          );
-        }).toSet();
+  void _startLocationTracking() async {
+    var status = await Permission.location.request();
+    if (status.isGranted) {
+      _userService.updateLiveLocation();
+      Geolocator.getPositionStream().listen((Position position) {
+        _mapController?.animateCamera(
+          CameraUpdate.newLatLng(
+            LatLng(position.latitude, position.longitude),
+          ),
+        );
       });
-    }, onError: (error) {
-      print("Stream Error: $error");
-    });
-  } catch (e) {
-    print("NearlyOtherUsers Catch: $e");
+    } else {
+      print("User has already reject tracking request!");
+    }
   }
-}
+
+  void _NearlyOtherUsers() {
+    try {
+      _userService.getNearbyUsersStream().listen((users) {
+        if (!mounted) return;
+        setState(() {
+          _markers = users.map((u) {
+            return Marker(
+              markerId: MarkerId(u['id']),
+              position: LatLng(u['lat'] ?? 0.0, u['lng'] ?? 0.0),
+              infoWindow: InfoWindow(title: u['username']),
+              icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure),
+            );
+          }).toSet();
+        });
+      }, onError: (error) {
+        print("Stream Error: $error");
+      });
+    } catch (e) {
+      print("NearlyOtherUsers Catch: $e");
+    }
+  }
 
   void _showMatchDialog() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Padding(
             padding: const EdgeInsets.all(24.0),
             child: Column(
@@ -154,7 +158,6 @@ void _NearlyOtherUsers() {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.pop(context); 
-                      
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (context) => const MatchInAdvancePage()),
@@ -182,14 +185,13 @@ void _NearlyOtherUsers() {
       body: IndexedStack(
         index: _selectedIndex,
         children: [
-          Stack (
+          Stack(
             children: [
-              // Map
               SizedBox(
                 width: double.infinity,
                 height: MediaQuery.of(context).size.height * 0.65,
                 child: GoogleMap(
-                  onMapCreated: (controller)=>_mapController=controller,
+                  onMapCreated: (controller) => _mapController = controller,
                   initialCameraPosition: const CameraPosition(
                     target: LatLng(3.055, 101.69), 
                     zoom: 14.0,
@@ -198,11 +200,9 @@ void _NearlyOtherUsers() {
                   mapType: MapType.normal, 
                   myLocationEnabled: true, 
                   myLocationButtonEnabled: false, 
-                 zoomControlsEnabled: false, 
+                  zoomControlsEnabled: false, 
                 ),
               ),
-        
-              // Control Panel
               Align(
                 alignment: Alignment.bottomCenter,
                 child: Container(
@@ -219,16 +219,31 @@ void _NearlyOtherUsers() {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        "Where to go, $_currentUsername?",
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      // FIXED REAL-TIME STREAM
+                      StreamBuilder<DocumentSnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(FirebaseAuth.instance.currentUser?.email)
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          String displayName = _currentUsername;
+
+                          if (snapshot.hasData && snapshot.data!.exists) {
+                            var data = snapshot.data!.data() as Map<String, dynamic>;
+                            // FIXED: Changed '+' to '=' for assignment
+                            displayName = data['username'] ?? "Guest";
+                          }
+                          return Text(
+                            "Where to go, $displayName?",
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          );
+                        },
                       ),
                       const SizedBox(height: 20),
-                    
                       Container(
                         height: 46,
                         decoration: BoxDecoration(
-                         color: Colors.grey.shade100,
+                          color: Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(30),
                         ),
                         child: Row(
@@ -253,14 +268,12 @@ void _NearlyOtherUsers() {
                                 ),
                               ),
                             ),
-                          
-                            const Icon(Icons.mic, color: Colors.grey),
-                            const SizedBox(width: 16),
+                            Icon(Icons.mic, color: Colors.grey),
+                            SizedBox(width: 16),
                           ],
                         ),
                       ),
                       const SizedBox(height: 10),
-                    
                       Wrap(
                         spacing: 12.0, 
                         runSpacing: 10.0,
@@ -270,9 +283,7 @@ void _NearlyOtherUsers() {
                           _buildLocationChip("Parkhill"),
                         ],
                       ),
-                    
                       const Spacer(),
-                    
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -292,74 +303,38 @@ void _NearlyOtherUsers() {
               ),
             ],
           ),
-          
           const ChatSelectionPage(),
-
           const SettingsPage(),
         ],
       ),
-      
-      // Bottom Navigation Bar
-      bottomNavigationBar: Theme(
-        data: Theme.of(context).copyWith(
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          type: BottomNavigationBarType.fixed,
-          onTap: (index) {
-            setState(() {
-              _selectedIndex = index;
-            });
-          },
-          selectedItemColor: Colors.blueAccent,
-          unselectedItemColor: Colors.grey,
-          backgroundColor: Colors.white,
-          elevation: 8,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.chat_bubble_outline),
-              label: 'Chat',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.settings),
-              label: 'Settings',
-            ),
-          ],
-        ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        type: BottomNavigationBarType.fixed,
+        onTap: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        selectedItemColor: Colors.blueAccent,
+        unselectedItemColor: Colors.grey,
+        backgroundColor: Colors.white,
+        elevation: 8,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+        ],
       ),
     );
   }
 
   Widget _buildLocationChip(String fullLocationName) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          _handleSearch(fullLocationName);
-          print("你点击了快捷地址: $fullLocationName");
-        },
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 95),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            fullLocationName, 
-            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13, color: Colors.black87),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-        ),
-      ),
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 95),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+      )  
     );
   }
 }

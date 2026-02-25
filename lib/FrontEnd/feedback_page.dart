@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart'; 
 
 const Color kThemeGreen = Color(0xFF00B14F);
 
@@ -11,6 +13,47 @@ class FeedbackPage extends StatefulWidget {
 
 class _FeedbackPageState extends State<FeedbackPage> {
   int _rating = 0;
+  // Added controller to grab the text from the TextField
+  final TextEditingController _commentController = TextEditingController();
+
+  // Added function to handle the Firestore submission
+  Future<void> _submitFeedback() async {
+    if (_rating == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a star rating'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    try {
+      final String? userEmail = FirebaseAuth.instance.currentUser?.email;
+
+      // Saving data to 'Feedback' collection
+      await FirebaseFirestore.instance.collection('Feedback').add({
+        'email': userEmail ?? 'Guest',
+        'rating': _rating,
+        'comment': _commentController.text.trim(),
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return; // Safety check for async gaps
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Thank you for your feedback!'), backgroundColor: kThemeGreen),
+      );
+      Navigator.pop(context);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,6 +90,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
             const Text('Tell us more', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black54)),
             const SizedBox(height: 8),
             TextField(
+              controller: _commentController, // Linked the controller here
               maxLines: 5,
               decoration: InputDecoration(
                 hintText: 'Share your thoughts or report an issue...',
@@ -65,12 +109,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
               width: double.infinity,
               height: 54,
               child: ElevatedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Thank you for your feedback!'), backgroundColor: kThemeGreen),
-                  );
-                  Navigator.pop(context);
-                },
+                onPressed: _submitFeedback, // Linked the new submission function
                 style: ElevatedButton.styleFrom(
                   backgroundColor: kThemeGreen,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

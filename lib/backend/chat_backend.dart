@@ -3,27 +3,27 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class ChatBackend {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Function to send a message to a specific room
-  Future<void> sendMessage(String roomId, String text, String senderId) async {
+  // UPDATED: Added receiverId and participants for the selection page preview
+  Future<void> sendMessage(String text, String myEmail, String contactEmail) async {
     if (text.trim().isEmpty) return;
 
-    await _firestore
-        .collection('chat_rooms')
-        .doc(roomId)
-        .collection('messages')
-        .add({
+    // Use a top-level 'Chat' collection to match your ChatSelectionPage logic
+    await _firestore.collection('Chat').add({
       'text': text.trim(),
-      'senderId': senderId,
-      'timestamp': FieldValue.serverTimestamp(), // Firestore real-time sync
+      'sender': myEmail,
+      'receiver': contactEmail,
+      // CRITICAL: This allows the selection page to find this message
+      'participants': [myEmail, contactEmail], 
+      'timestamp': FieldValue.serverTimestamp(),
+      'isRead': false, // For the bold unread status
     });
   }
 
-  // Stream to listen for new messages instantly
-  Stream<QuerySnapshot> getMessages(String roomId) {
+  // Stream for the messaging page itself
+  Stream<QuerySnapshot> getMessages(String myEmail, String contactEmail) {
     return _firestore
-        .collection('chat_rooms')
-        .doc(roomId)
-        .collection('messages')
+        .collection('Chat')
+        .where('participants', arrayContains: myEmail)
         .orderBy('timestamp', descending: true)
         .snapshots();
   }
