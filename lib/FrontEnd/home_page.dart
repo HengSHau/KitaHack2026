@@ -42,35 +42,35 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _handleSearch(String address) async {
-  // 1. 叫后台去查坐标 (纯数据)
-  LatLng? target = await _userService.getCoordsFromAddress(address);
+    // 1. 叫后台去查坐标 (纯数据)
+    LatLng? target = await _userService.getCoordsFromAddress(address);
 
-  if (target != null && mounted) {
-    // 2. 前台负责操作控制器 (纯 UI)
-    setState(() {
-      _followUserLocation = false;
-    });
+    if (target != null && mounted) {
+      // 2. 前台负责操作控制器 (纯 UI)
+      setState(() {
+        _followUserLocation = false;
+      });
 
-    _mapController?.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(target: target, zoom: 16.0),
-      ),
-    );
-    
-    // 更新 Marker
-    setState(() {
-      _markers.add(Marker(
-        markerId: MarkerId(address),
-        position: target,
-        infoWindow: InfoWindow(title: address),
-      ));
-    });
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Location not found: $address")),
-    );
+      _mapController?.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(target: target, zoom: 16.0),
+        ),
+      );
+      
+      // 更新 Marker
+      setState(() {
+        _markers.add(Marker(
+          markerId: MarkerId(address),
+          position: target,
+          infoWindow: InfoWindow(title: address),
+        ));
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Location not found: $address")),
+      );
+    }
   }
-}
 
   void _loadName() async {
     String name = await _userService.getCurrentUsername();
@@ -296,6 +296,41 @@ class _HomePageState extends State<HomePage> {
                           _buildLocationChip("Parkhill"),
                         ],
                       ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          // Show eta
+                          Expanded(
+                            child: _buildDetailBox(
+                              Icons.access_time_filled, 
+                              "Est. Time", 
+                              "15 - 20 mins", // 这里的数值可以根据 handleSearch 结果动态更新
+                              Colors.blue.shade50,
+                              Colors.blue,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          // Description input
+                          Expanded(
+                            flex: 2,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const TextField(
+                                decoration: InputDecoration(
+                                  hintText: "Add description (e.g. at Gate A)",
+                                  hintStyle: TextStyle(fontSize: 12),
+                                  border: InputBorder.none,
+                                  icon: Icon(Icons.edit_note, size: 20, color: Colors.grey),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                       const Spacer(),
                       SizedBox(
                         width: double.infinity,
@@ -355,6 +390,30 @@ class _HomePageState extends State<HomePage> {
         decoration: BoxDecoration(
           color: Colors.grey.shade100,
         )  
+      ),
+    );
+  }
+
+  Widget _buildDetailBox(IconData icon, String label, String value, Color bgColor, Color iconColor) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 14, color: iconColor),
+              const SizedBox(width: 4),
+              Text(label, style: TextStyle(fontSize: 10, color: iconColor.withOpacity(0.8))),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+        ],
       ),
     );
   }
