@@ -9,6 +9,7 @@ import 'package:geocoding/geocoding.dart';
 import 'match_in_advance_page.dart';
 import 'settings_page.dart';
 import 'chat_page.dart';
+import 'package:kitahack2026/backend/notification_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -32,6 +33,10 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadName();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+    _initNotificationSetting(); 
+    AppNotificationListener().startListening();
+  });
     _startLocationTracking();
     Future.delayed(const Duration(seconds: 1), () {
       _NearlyOtherUsers();
@@ -82,6 +87,17 @@ class _HomePageState extends State<HomePage> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _loadName();
+  }
+
+  void _initNotificationSetting() async {
+    bool granted = await NotificationService.requestNotificationPermission(context);
+    
+    if (granted) {
+      print("Notification permission has been obtained");
+      AppNotificationListener().startListening();
+    } else {
+      print("The user denied notification permissions.");
+    }
   }
 
   void _startLocationTracking() async {

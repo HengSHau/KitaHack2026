@@ -4,12 +4,14 @@ import '../firebase_options.dart'; // 1. IMPORT your options file
 import '../FrontEnd/login_page.dart';
 import '../FrontEnd/home_page.dart';
 import '../FrontEnd/register_page.dart';
+import '../backend/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  await NotificationService.initialize();
   runApp(const MyApp());
 }
 
