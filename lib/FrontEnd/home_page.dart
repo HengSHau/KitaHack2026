@@ -17,10 +17,13 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
   Set<Marker> _markers = {};
   int _selectedIndex = 0;
   bool _followUserLocation = true;
+  LatLng? currentp;
+  LatLng? destinationp;
+  Set<Polyline> line = {};
   
   GoogleMapController? _mapController;  
   final LatLng _defaultLocation = const LatLng(3.055, 101.69);
@@ -36,14 +39,31 @@ class _HomePageState extends State<HomePage> {
     Future.delayed(const Duration(seconds: 1), () {
       _NearlyOtherUsers();
     });
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() { 
+    super.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+  }
+
+  @override
+  void ChangingonlineState(AppLifecycleState state) {
+    // When user quit the app will set to offline
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+       setOfflineStatus();
+    } else if (state == AppLifecycleState.resumed) {
+      // while back to the app updated status to online
+       _userService.updateLiveLocation(); 
+    }
   }
 
   Future<void> _handleSearch(String address) async {
-  // 1. 叫后台去查坐标 (纯数据)
+  // Check location 
   LatLng? target = await _userService.getCoordsFromAddress(address);
 
   if (target != null && mounted) {
-    // 2. 前台负责操作控制器 (纯 UI)
     setState(() {
       _followUserLocation = false;
     });
@@ -54,7 +74,7 @@ class _HomePageState extends State<HomePage> {
       ),
     );
     
-    // 更新 Marker
+    // Updated Marker
     setState(() {
       _markers.add(Marker(
         markerId: MarkerId(address),
@@ -119,6 +139,15 @@ class _HomePageState extends State<HomePage> {
       });
     } catch (e) {
       print("NearlyOtherUsers Catch: $e");
+    }
+  }
+
+  void setOfflineStatus() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+        'OnlineStatus': false,
+      });
     }
   }
 
@@ -223,7 +252,7 @@ class _HomePageState extends State<HomePage> {
                       StreamBuilder<DocumentSnapshot>(
                         stream: FirebaseFirestore.instance
                             .collection('users')
-                            .doc(FirebaseAuth.instance.currentUser?.email)
+                            .doc(FirebaseAuth.instance.currentUser?.uid)
                             .snapshots(),
                         builder: (context, snapshot) {
                           String displayName = _currentUsername;
@@ -277,11 +306,6 @@ class _HomePageState extends State<HomePage> {
                       Wrap(
                         spacing: 12.0, 
                         runSpacing: 10.0,
-                        children: [
-                          _buildLocationChip("Pavilion Bukit Jalil"),
-                          _buildLocationChip("APU"),
-                          _buildLocationChip("Parkhill"),
-                        ],
                       ),
                       const Spacer(),
                       SizedBox(
@@ -334,7 +358,7 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
-      )  
+      )
     );
   }
 }
