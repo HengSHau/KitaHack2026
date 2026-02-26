@@ -54,11 +54,11 @@ class UserService {
 
   final String _googleApiKey = "AIzaSyBiGMWJftV-4oBnV0MNQmPbxUybDHaUagQ";
 
+  // Google Firaction API for polylines and duration
   Future<Map<String, dynamic>> getDirections(LatLng origin, LatLng destination) async {
   List<LatLng> polylineCoordinates = [];
   String duration = "N/A";
   
-  // 1. 确保 URL 构造正确
   String url = "https://maps.googleapis.com/maps/api/directions/json?" +
       "origin=${origin.latitude},${origin.longitude}" +
       "&destination=${destination.latitude},${destination.longitude}" +
@@ -73,11 +73,10 @@ class UserService {
       if (data['status'] == 'OK') {
         String encodedPolyline = data['routes'][0]['overview_polyline']['points'];
         duration = data['routes'][0]['legs'][0]['duration']['text'];
-        // --- 修复开始 ---
+
         PolylinePoints polylinePoints = PolylinePoints(apiKey: _googleApiKey); 
-        // 注意：这里要用实例 polylinePoints 调用，而不是类名 PolylinePoints
         List<PointLatLng> result = PolylinePoints.decodePolyline(encodedPolyline);
-        // --- 修复结束 ---
+
 
         if (result.isNotEmpty) {
           for (var point in result) {
@@ -85,7 +84,6 @@ class UserService {
           }
         }
       } else {
-        // 这里会打印具体的错误原因，比如 REQUEST_DENIED（Key没开权限）或 ZERO_RESULTS（没路）
         print("Directions API Error Status: ${data['status']}");
         if(data['error_message'] != null) print("Error Message: ${data['error_message']}");
       }
@@ -98,8 +96,6 @@ class UserService {
     "Durations" : duration
   };
 }
-
-
 
   // Used to get username by login accout
   Future<String> getCurrentUsername() async {
