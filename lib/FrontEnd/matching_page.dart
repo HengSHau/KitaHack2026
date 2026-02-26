@@ -18,9 +18,25 @@ class _MatchingPageState extends State<MatchingPage> {
     super.initState();
     Timer(const Duration(seconds: 3), () {
       if (mounted) {
+
+        final List <Map<String,dynamic>> dummyAiResults=[
+          {"name": "Lim", "personality": "Introverted", "email": "limluffy123@gmail.com"},
+          {"name": "Tester", "personality": "Ambivert", "email": "test@gmail.com"},
+          {"name": "Iris", "personality": "Ambivert", "email": "siweiseah@gmail.com"},
+        ];
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const MatchSuccessPage()),
+          MaterialPageRoute(
+            builder:(context)=>MatchSuccessPage(
+              matchedUsers: dummyAiResults,
+              // === 唯一修改的地方：补充这四个必要参数 ===
+              origin: "APU", 
+              destination: widget.destination,
+              date: "12 Nov 2026", 
+              time: "08:00 AM",
+              // ======================================
+            ),
+          ),
         );
       }
     });
