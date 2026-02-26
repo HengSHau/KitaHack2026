@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'match_success_page.dart';
+import 'package:kitahack2026/backend/notification_service.dart';
 
 const Color kThemeGreen = Color(0xFF2ECC71);
 
@@ -18,6 +19,11 @@ class _MatchingPageState extends State<MatchingPage> {
     super.initState();
     Timer(const Duration(seconds: 3), () {
       if (mounted) {
+        NotificationService.showNotification(
+        id: 999, 
+        title: "Match Successful！🚗",
+        body: "The system has matched you with the most suitable carpooling trip. Click to view.",
+      );
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const MatchSuccessPage()),

@@ -46,6 +46,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
     _initNotificationSetting(); 
     AppNotificationListener().startListening();
   });
+  
     Future.delayed(const Duration(seconds: 1), () {
       _NearlyOtherUsers();
     });
