@@ -32,7 +32,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
   String _estimatedTime = "N/A";
   
   GoogleMapController? _mapController;  
-  final LatLng _defaultLocation = const LatLng(3.055, 101.69);
 
   final UserService _userService = UserService();
   String _currentUsername = "Guest";
