@@ -3,6 +3,9 @@ import 'package:awesome_notifications/awesome_notifications.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:kitahack2026/main.dart';
+import 'package:kitahack2026/FrontEnd/chat_page.dart';
+import 'package:kitahack2026/FrontEnd/match_success_page.dart';
 
 class NotificationService {
   static Future<void> initialize() async {
@@ -22,7 +25,87 @@ class NotificationService {
       ],
       debug: true,
     );
-    print("--- Notification channel initialization is complete. ---");
+
+    AwesomeNotifications().setListeners(
+      onActionReceivedMethod: onActionReceivedMethod,
+    );
+
+    print("--- Notification initialization complete ---");
+  }
+
+  static Future<void> onActionReceivedMethod(ReceivedAction receivedAction) async {
+    final payload = receivedAction.payload;
+    if (payload == null) return;
+
+    if (payload['type'] == 'match') {
+      print("Jump to Match Success Page");
+      navigatorKey.currentState?.push(
+        MaterialPageRoute(builder: (context) => const MatchSuccessPage()),
+      );
+      return;
+    }
+
+    if (payload['userEmail'] != null) {
+      String name = payload['userName'] ?? "User";
+      String email = payload['userEmail']!;
+      String myEmail = FirebaseAuth.instance.currentUser?.email ?? "";
+
+      print("Jump to Chat Page with $email");
+
+      _markAsRead(email, myEmail);
+
+      await AwesomeNotifications().dismiss(receivedAction.id!);
+
+      navigatorKey.currentState?.push(
+        MaterialPageRoute(
+          builder: (context) => ChatMessagingPage(
+            userName: name,
+            userEmail: email,
+          ),
+        ),
+      );
+    }
+  }
+
+  static Future<void> _markAsRead(String senderEmail, String myEmail) async {
+    var batch = FirebaseFirestore.instance.batch();
+    var snapshots = await FirebaseFirestore.instance
+        .collection('Chat')
+        .where('sender', isEqualTo: senderEmail)
+        .where('receiver', isEqualTo: myEmail)
+        .where('isRead', isEqualTo: false)
+        .get();
+
+    for (var doc in snapshots.docs) {
+      batch.update(doc.reference, {'isRead': true});
+    }
+    await batch.commit();
+  }
+
+  static Future<void> showNotification({
+    required int id,
+    required String title,
+    required String body,
+    required String senderName,
+    required String senderEmail,
+    String? groupKey,
+    String? type,
+  }) async {
+    await AwesomeNotifications().createNotification(
+      content: NotificationContent(
+        id: id,
+        channelKey: 'carpool_notifications',
+        title: title,
+        body: body,
+        groupKey: groupKey,
+        payload: {
+          "type": type ?? "chat",
+          "userName": senderName,
+          "userEmail": senderEmail,
+        },
+        notificationLayout: NotificationLayout.Default,
+      ),
+    );
   }
 
   static Future<bool> requestNotificationPermission(BuildContext context) async {
@@ -54,51 +137,6 @@ class NotificationService {
     return await AwesomeNotifications().isNotificationAllowed();
   }
 
-  static Future<void> showNotification({
-    required int id,
-    required String title,
-    required String body,
-    String? groupKey,
-    Map<String, String>? payload,
-  }) async {
-    await AwesomeNotifications().createNotification(
-      content: NotificationContent(
-        id: id,
-        channelKey: 'carpool_notifications',
-        title: title,
-        body: body,
-        groupKey: groupKey,
-        payload: payload,
-        notificationLayout: NotificationLayout.Default,
-      ),
-    );
-
-    AwesomeNotifications().setListeners(
-      onActionReceivedMethod: (ReceivedAction receivedAction) async {
-        final payload = receivedAction.payload;
-        if (payload != null && payload['senderEmail'] != null) {
-          String senderEmail = payload['senderEmail']!;
-          String myEmail = FirebaseAuth.instance.currentUser?.email ?? "";
-
-          // 去 Firestore 把该发件人发给我的所有未读消息标为已读
-          var batch = FirebaseFirestore.instance.batch();
-          var snapshots = await FirebaseFirestore.instance
-              .collection('Chat')
-              .where('sender', isEqualTo: senderEmail)
-              .where('receiver', isEqualTo: myEmail)
-              .where('isRead', isEqualTo: false)
-              .get();
-
-          for (var doc in snapshots.docs) {
-            batch.update(doc.reference, {'isRead': true});
-          }
-          await batch.commit();
-          await AwesomeNotifications().dismiss(receivedAction.id!);
-          print("The message from $senderEmail has been marked as read.");
-        }
-      },
-    );
-  }
 
   static Future<void> scheduleAdvanceNotification({
     required int id,
@@ -155,16 +193,18 @@ class AppNotificationListener {
           if (receiver == myEmail && msgId != _lastMessageId) {
             _lastMessageId = msgId;
 
-            int notificationId = (data['sender'] ?? "default").hashCode;
+            String senderEmail = data['sender'] ?? "";
+            String senderName = data['senderName'] ?? "New Message";
 
             NotificationService.showNotification(
-              id: notificationId, 
+              id: senderEmail.hashCode, // 使用发件人 ID 哈希，同一个人消息会覆盖
               title: '来自 $senderName 的新消息',
               body: text,
-              payload: {"senderEmail": data['sender'] ?? ""},
-              groupKey: data['sender'], 
+              senderName: senderName,   // 传递给 Service
+              senderEmail: senderEmail, // 传递给 Service
+              groupKey: senderEmail, 
             );
-          }
+}
         }
       }
     });

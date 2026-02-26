@@ -4,6 +4,7 @@ import 'firebase_options.dart'; // 1. IMPORT your options file
 import 'FrontEnd/login_page.dart';
 import '../backend/notification_service.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
@@ -18,7 +19,9 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'GreenNode',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

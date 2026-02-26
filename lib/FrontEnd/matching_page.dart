@@ -20,13 +20,17 @@ class _MatchingPageState extends State<MatchingPage> {
     Timer(const Duration(seconds: 3), () {
       if (mounted) {
         NotificationService.showNotification(
-        id: 999, 
-        title: "Match Successful！🚗",
-        body: "The system has matched you with the most suitable carpooling trip. Click to view.",
-      );
-        Navigator.pushReplacement(
+          id: 999, 
+          title: "Match Successful！🚗",
+          body: "The system has matched you with the most suitable carpooling trip. Click to view.",
+          senderName: "System",
+          senderEmail: "ai@gmail.com",
+          type: "match",
+        );
+        Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const MatchSuccessPage()),
+          (route) => route.isFirst, // 这里的逻辑是保留最底层的页面（通常是 Home 或 Login）
         );
       }
     });
