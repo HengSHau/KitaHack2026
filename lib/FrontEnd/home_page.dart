@@ -27,6 +27,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
   LatLng? currentp;
   LatLng? destinationp;
   Set<Polyline> line = {};
+  String _estimatedTime = "N/A";
   
   GoogleMapController? _mapController;  
   final LatLng _defaultLocation = const LatLng(3.055, 101.69);
@@ -38,7 +39,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
   void initState() {
     super.initState();
     _loadName();
-    _startLocationTracking();
+    Future.delayed(const Duration(seconds: 1), () {
+      _startLocationTracking();
+    });
     Future.delayed(const Duration(seconds: 1), () {
       _NearlyOtherUsers();
     });
@@ -108,7 +111,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              _confirmNavigation(address, target); // 执行确认逻辑
+              _confirmNavigation(address, target); 
             },
             child: const Text("Set"),
           ),
@@ -117,25 +120,49 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
     );
   }
 
-  void _confirmNavigation(String address, LatLng target) async {
+  // 在 HomePage 的 _confirmNavigation 方法中
+void _confirmNavigation(String address, LatLng target) async {
+  if (currentp == null) return;
+
+  // 1. 调用 API 获取数据 (现在返回的是 Map<String, dynamic>)
+  var routeData = await _userService.getDirections(currentp!, target);
+
+  // 提取数据
+  List<LatLng> points = routeData["Lines"] as List<LatLng>;
+  String duration = routeData["Durations"] as String;
+
+  if (points.isEmpty) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Could not find a road route.")),
+      );
+    }
+    return;
+  }
+
   setState(() {
     destinationp = target;
+    _estimatedTime = duration; // 重点：更新状态变量，这将触发 UI 重新渲染
 
+    // 2. 更新标记
     _markers.add(Marker(
       markerId: const MarkerId("destination"),
       position: target,
-      infoWindow: InfoWindow(title: "目的地: $address"),
+      infoWindow: InfoWindow(title: "Destination: $address"),
       icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
     ));
 
-    if (currentp != null) {
-        line.add(Polyline(
-        polylineId: const PolylineId("route"),
-        points: [currentp!, destinationp!],
-        color: Colors.blue,
-        width: 5,
-      ));
-    }
+    // 3. 更新路线
+    line.clear();
+    line.add(Polyline(
+      polylineId: const PolylineId("road_route"),
+      points: points,
+      color: Colors.blueAccent,
+      width: 6,
+      jointType: JointType.round,
+      startCap: Cap.roundCap,
+      endCap: Cap.roundCap,
+    ));
   });
 
   await _userService.updateDestination(address, target.latitude, target.longitude);
@@ -163,16 +190,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
       _userService.updateLiveLocation();
       Geolocator.getPositionStream().listen((Position position) {
         currentp = LatLng(position.latitude, position.longitude);
-        if (destinationp != null) {
-        // real-time update personal location with destination distance
-        line.removeWhere((p) => p.polylineId.value == "route");
-        line.add(Polyline(
-        polylineId: const PolylineId("route"),
-        points: [currentp!, destinationp!],
-        color: Colors.blue,
-        width: 5,
-      ));
-    }
+
         _mapController?.animateCamera(
           CameraUpdate.newLatLng(
             LatLng(position.latitude, position.longitude),
@@ -390,7 +408,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
                             child: _buildDetailBox(
                               Icons.access_time_filled, 
                               "Est. Time", 
-                              "15 - 20 mins", // 这里的数值可以根据 handleSearch 结果动态更新
+                              _estimatedTime, 
                               Colors.blue.shade50,
                               Colors.blue,
                             ),
