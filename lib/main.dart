@@ -26,6 +26,11 @@ class MyApp extends StatelessWidget {
       ),
       // Setting LoginPage as the entry point
       home: const LoginPage(), 
+
+      initialRoute: '/',
+      routes: {
+        '/login': (context) => const LoginPage(),
+      },
     );
   }
 }

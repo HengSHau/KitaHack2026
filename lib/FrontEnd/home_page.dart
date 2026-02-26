@@ -19,6 +19,9 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  bool _isDriver = false;
+  int _maxSeats = 1;
+
   final TextEditingController _destinationController = TextEditingController();
   
   Set<Marker> _markers = {};
@@ -299,36 +302,65 @@ class _HomePageState extends State<HomePage> {
                       const SizedBox(height: 20),
                       Row(
                         children: [
-                          // Show eta
+                          // Driver or passenger
                           Expanded(
-                            child: _buildDetailBox(
-                              Icons.access_time_filled, 
-                              "Est. Time", 
-                              "15 - 20 mins", // 这里的数值可以根据 handleSearch 结果动态更新
-                              Colors.blue.shade50,
-                              Colors.blue,
+                            flex: 3,
+                            child: Container(
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              child: Row(
+                                children: [
+                                  _buildRoleButton("Passenger", Icons.person, !_isDriver),
+                                  _buildRoleButton("Driver", Icons.directions_car, _isDriver),
+                                ],
+                              ),
                             ),
                           ),
                           const SizedBox(width: 12),
-                          // Description input
-                          Expanded(
-                            flex: 2,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade100,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const TextField(
-                                decoration: InputDecoration(
-                                  hintText: "Add description (e.g. at Gate A)",
-                                  hintStyle: TextStyle(fontSize: 12),
-                                  border: InputBorder.none,
-                                  icon: Icon(Icons.edit_note, size: 20, color: Colors.grey),
+                          
+                          // If isDriver, show capacity combobox
+                          if (_isDriver)
+                            Expanded(
+                              flex: 2,
+                              child: Container(
+                                height: 50,
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F8F3),
+                                  borderRadius: BorderRadius.circular(15),
+                                  border: Border.all(color: const Color(0xFF2ECC71).withOpacity(0.3)),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Icon(Icons.event_seat, size: 18, color: Color(0xFF2ECC71)),
+                                    DropdownButton<int>(
+                                      value: _maxSeats,
+                                      underline: const SizedBox(),
+                                      items: [1, 2, 3, 4].map((int value) {
+                                        return DropdownMenuItem<int>(
+                                          value: value,
+                                          child: Text("$value", style: const TextStyle(fontWeight: FontWeight.bold)),
+                                        );
+                                      }).toList(),
+                                      onChanged: (val) {
+                                        setState(() => _maxSeats = val!);
+                                      },
+                                    ),
+                                  ],
                                 ),
                               ),
+                            )
+                          else
+                            // If passenger, show eta ui
+                            Expanded(
+                              flex: 2,
+                              child: _buildDetailBox(Icons.access_time_filled_rounded, "EST. TIME", "15-20m", Colors.blue.shade50, Colors.blue,
+                              ),
                             ),
-                          ),
                         ],
                       ),
                       const Spacer(),
@@ -396,12 +428,14 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildDetailBox(IconData icon, String label, String value, Color bgColor, Color iconColor) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      height: 50,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -414,6 +448,42 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 4),
           Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRoleButton(String title, IconData icon, bool isSelected) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _isDriver = (title == "Driver");
+          });
+        },
+        child: Container(
+          margin: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: isSelected 
+              ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)] 
+              : [],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 16, color: isSelected ? const Color(0xFF2ECC71) : Colors.grey),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: isSelected ? Colors.black87 : Colors.grey,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

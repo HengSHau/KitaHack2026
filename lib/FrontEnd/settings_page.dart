@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'edit_profile_page.dart';
 import 'feedback_page.dart';
 import 'help_center_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 const Color kThemeGreen = Color(0xFF00B14F); 
 
@@ -59,6 +60,27 @@ class SettingsPage extends StatelessWidget {
                 ],
               ),
             ),
+
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  await FirebaseAuth.instance.signOut();
+                  if (context.mounted) {
+                    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+                  }
+                },
+                icon: const Icon(Icons.logout, color: Colors.redAccent),
+                label: const Text("Log Out", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.redAccent),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
           ],
         ),
       ),
