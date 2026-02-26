@@ -21,12 +21,15 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
   final TextEditingController _destinationController = TextEditingController();
   
+  bool _isDriver = false;
+  int _maxSeats = 1;
   Set<Marker> _markers = {};
   int _selectedIndex = 0;
   bool _followUserLocation = true;
   LatLng? currentp;
   LatLng? destinationp;
   Set<Polyline> line = {};
+  String _estimatedTime = "N/A";
   
   GoogleMapController? _mapController;  
   final LatLng _defaultLocation = const LatLng(3.055, 101.69);
@@ -38,7 +41,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
   void initState() {
     super.initState();
     _loadName();
-    _startLocationTracking();
+    Future.delayed(const Duration(seconds: 1), () {
+      _startLocationTracking();
+    });
     Future.delayed(const Duration(seconds: 1), () {
       _NearlyOtherUsers();
     });
@@ -108,7 +113,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              _confirmNavigation(address, target); // 执行确认逻辑
+              _confirmNavigation(address, target); 
             },
             child: const Text("Set"),
           ),
@@ -117,25 +122,50 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
     );
   }
 
-  void _confirmNavigation(String address, LatLng target) async {
+// Use to get the user conformation for set destination to get estimated time and polylines
+void _confirmNavigation(String address, LatLng target) async {
+  if (currentp == null) return;
+
+  // Direction Api
+  var routeData = await _userService.getDirections(currentp!, target);
+
+  // Get polylines and duration data
+  List<LatLng> points = routeData["Lines"] as List<LatLng>;
+  String duration = routeData["Durations"] as String;
+
+  if (points.isEmpty) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Could not find a road route.")),
+      );
+    }
+    return;
+  }
+  
+  //Updated polylines and duration data
   setState(() {
     destinationp = target;
+    _estimatedTime = duration; 
 
+    // Updated marker
     _markers.add(Marker(
       markerId: const MarkerId("destination"),
       position: target,
-      infoWindow: InfoWindow(title: "目的地: $address"),
+      infoWindow: InfoWindow(title: "Destination: $address"),
       icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
     ));
 
-    if (currentp != null) {
-        line.add(Polyline(
-        polylineId: const PolylineId("route"),
-        points: [currentp!, destinationp!],
-        color: Colors.blue,
-        width: 5,
-      ));
-    }
+    // Updated polylines
+    line.clear();
+    line.add(Polyline(
+      polylineId: const PolylineId("road_route"),
+      points: points,
+      color: Colors.blueAccent,
+      width: 6,
+      jointType: JointType.round,
+      startCap: Cap.roundCap,
+      endCap: Cap.roundCap,
+    ));
   });
 
   await _userService.updateDestination(address, target.latitude, target.longitude);
@@ -163,16 +193,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
       _userService.updateLiveLocation();
       Geolocator.getPositionStream().listen((Position position) {
         currentp = LatLng(position.latitude, position.longitude);
-        if (destinationp != null) {
-        // real-time update personal location with destination distance
-        line.removeWhere((p) => p.polylineId.value == "route");
-        line.add(Polyline(
-        polylineId: const PolylineId("route"),
-        points: [currentp!, destinationp!],
-        color: Colors.blue,
-        width: 5,
-      ));
-    }
+
         _mapController?.animateCamera(
           CameraUpdate.newLatLng(
             LatLng(position.latitude, position.longitude),
@@ -385,36 +406,65 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
                       const SizedBox(height: 20),
                       Row(
                         children: [
-                          // Show eta
+                          // Driver or passenger
                           Expanded(
-                            child: _buildDetailBox(
-                              Icons.access_time_filled, 
-                              "Est. Time", 
-                              "15 - 20 mins", // 这里的数值可以根据 handleSearch 结果动态更新
-                              Colors.blue.shade50,
-                              Colors.blue,
+                            flex: 3,
+                            child: Container(
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              child: Row(
+                                children: [
+                                  _buildRoleButton("Passenger", Icons.person, !_isDriver),
+                                  _buildRoleButton("Driver", Icons.directions_car, _isDriver),
+                                ],
+                              ),
                             ),
                           ),
                           const SizedBox(width: 12),
-                          // Description input
-                          Expanded(
-                            flex: 2,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade100,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const TextField(
-                                decoration: InputDecoration(
-                                  hintText: "Add description (e.g. at Gate A)",
-                                  hintStyle: TextStyle(fontSize: 12),
-                                  border: InputBorder.none,
-                                  icon: Icon(Icons.edit_note, size: 20, color: Colors.grey),
+                          
+                          // If isDriver, show capacity combobox
+                          if (_isDriver)
+                            Expanded(
+                              flex: 2,
+                              child: Container(
+                                height: 50,
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F8F3),
+                                  borderRadius: BorderRadius.circular(15),
+                                  border: Border.all(color: const Color(0xFF2ECC71).withOpacity(0.3)),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Icon(Icons.event_seat, size: 18, color: Color(0xFF2ECC71)),
+                                    DropdownButton<int>(
+                                      value: _maxSeats,
+                                      underline: const SizedBox(),
+                                      items: [1, 2, 3, 4].map((int value) {
+                                        return DropdownMenuItem<int>(
+                                          value: value,
+                                          child: Text("$value", style: const TextStyle(fontWeight: FontWeight.bold)),
+                                        );
+                                      }).toList(),
+                                      onChanged: (val) {
+                                        setState(() => _maxSeats = val!);
+                                      },
+                                    ),
+                                  ],
                                 ),
                               ),
+                            )
+                          else
+                            // If passenger, show eta ui
+                            Expanded(
+                              flex: 2,
+                              child: _buildDetailBox(Icons.access_time_filled_rounded, "EST. TIME", _estimatedTime, Colors.blue.shade50, Colors.blue,
+                              ),
                             ),
-                          ),
                         ],
                       ),
                       const Spacer(),
@@ -482,12 +532,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
 
   Widget _buildDetailBox(IconData icon, String label, String value, Color bgColor, Color iconColor) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      height: 50,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -500,6 +552,42 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver{
           const SizedBox(height: 4),
           Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRoleButton(String title, IconData icon, bool isSelected) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _isDriver = (title == "Driver");
+          });
+        },
+        child: Container(
+          margin: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: isSelected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: isSelected 
+              ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)] 
+              : [],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 16, color: isSelected ? const Color(0xFF2ECC71) : Colors.grey),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: isSelected ? Colors.black87 : Colors.grey,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
