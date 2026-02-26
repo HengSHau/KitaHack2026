@@ -2,6 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geocoding/geocoding.dart' as geo;
 
 
@@ -49,6 +52,50 @@ class UserService {
     }
   }
 
+  final String _googleApiKey = "AIzaSyBiGMWJftV-4oBnV0MNQmPbxUybDHaUagQ";
+
+  // Google Firaction API for polylines and duration
+  Future<Map<String, dynamic>> getDirections(LatLng origin, LatLng destination) async {
+  List<LatLng> polylineCoordinates = [];
+  String duration = "N/A";
+  
+  String url = "https://maps.googleapis.com/maps/api/directions/json?" +
+      "origin=${origin.latitude},${origin.longitude}" +
+      "&destination=${destination.latitude},${destination.longitude}" +
+      "&mode=driving" +
+      "&key=$_googleApiKey";
+
+  try {
+    var response = await http.get(Uri.parse(url));
+    if (response.statusCode == 200) {
+      var data = json.decode(response.body);
+      
+      if (data['status'] == 'OK') {
+        String encodedPolyline = data['routes'][0]['overview_polyline']['points'];
+        duration = data['routes'][0]['legs'][0]['duration']['text'];
+
+        PolylinePoints polylinePoints = PolylinePoints(apiKey: _googleApiKey); 
+        List<PointLatLng> result = PolylinePoints.decodePolyline(encodedPolyline);
+
+
+        if (result.isNotEmpty) {
+          for (var point in result) {
+            polylineCoordinates.add(LatLng(point.latitude, point.longitude));
+          }
+        }
+      } else {
+        print("Directions API Error Status: ${data['status']}");
+        if(data['error_message'] != null) print("Error Message: ${data['error_message']}");
+      }
+    }
+  } catch (e) {
+    print("Error fetching directions: $e");
+  }
+  return {
+    "Lines" : polylineCoordinates,
+    "Durations" : duration
+  };
+}
 
   // Used to get username by login accout
   Future<String> getCurrentUsername() async {
