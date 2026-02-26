@@ -74,31 +74,51 @@ class NotificationService {
     );
 
     AwesomeNotifications().setListeners(
-    onActionReceivedMethod: (ReceivedAction receivedAction) async {
-      final payload = receivedAction.payload;
-      if (payload != null && payload['senderEmail'] != null) {
-        String senderEmail = payload['senderEmail']!;
-        String myEmail = FirebaseAuth.instance.currentUser?.email ?? "";
+      onActionReceivedMethod: (ReceivedAction receivedAction) async {
+        final payload = receivedAction.payload;
+        if (payload != null && payload['senderEmail'] != null) {
+          String senderEmail = payload['senderEmail']!;
+          String myEmail = FirebaseAuth.instance.currentUser?.email ?? "";
 
-        // 去 Firestore 把该发件人发给我的所有未读消息标为已读
-        var batch = FirebaseFirestore.instance.batch();
-        var snapshots = await FirebaseFirestore.instance
-            .collection('Chat')
-            .where('sender', isEqualTo: senderEmail)
-            .where('receiver', isEqualTo: myEmail)
-            .where('isRead', isEqualTo: false)
-            .get();
+          // 去 Firestore 把该发件人发给我的所有未读消息标为已读
+          var batch = FirebaseFirestore.instance.batch();
+          var snapshots = await FirebaseFirestore.instance
+              .collection('Chat')
+              .where('sender', isEqualTo: senderEmail)
+              .where('receiver', isEqualTo: myEmail)
+              .where('isRead', isEqualTo: false)
+              .get();
 
-        for (var doc in snapshots.docs) {
-          batch.update(doc.reference, {'isRead': true});
+          for (var doc in snapshots.docs) {
+            batch.update(doc.reference, {'isRead': true});
+          }
+          await batch.commit();
+          await AwesomeNotifications().dismiss(receivedAction.id!);
+          print("The message from $senderEmail has been marked as read.");
         }
-        await batch.commit();
-        await AwesomeNotifications().dismiss(receivedAction.id!);
-        print("The message from $senderEmail has been marked as read.");
-      }
-    },
-  );
+      },
+    );
   }
+
+  static Future<void> scheduleAdvanceNotification({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledTime,
+    }) async {
+      await AwesomeNotifications().createNotification(
+        content: NotificationContent(
+          id: id,
+          channelKey: 'carpool_notifications',
+          title: title,
+          body: body,
+          category: NotificationCategory.Alarm,
+          notificationLayout: NotificationLayout.Default,
+          wakeUpScreen: true, 
+        ),
+        schedule: NotificationCalendar.fromDate(date: scheduledTime),
+      );
+    }
 }
 
 class AppNotificationListener {
