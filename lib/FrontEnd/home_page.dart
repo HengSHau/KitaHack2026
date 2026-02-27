@@ -16,11 +16,11 @@ class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<HomePage> createState() => _HomePageState(); 
 }
 
 class RideRequest {
-  final String id;
+  final String email;
   final String name;
   final String role;
   final String start;
@@ -29,7 +29,7 @@ class RideRequest {
   final String personality;
 
   RideRequest({
-    required this.id,
+    required this.email,
     required this.name,
     required this.role,
     required this.start,
@@ -39,18 +39,21 @@ class RideRequest {
   });
 }
 
-class _HomePageState extends State<HomePage> {
-  bool _isDriver = false;
-  int _maxSeats = 1;
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   final TextEditingController _destinationController = TextEditingController();
   
+  bool _isDriver = false;
+  int _maxSeats = 1;
   Set<Marker> _markers = {};
   int _selectedIndex = 0;
   bool _followUserLocation = true;
+  LatLng? currentp;
+  LatLng? destinationp;
+  Set<Polyline> line = {};
+  String _estimatedTime = "N/A";
   
   GoogleMapController? _mapController;  
-  final LatLng _defaultLocation = const LatLng(3.055, 101.69);
 
   final UserService _userService = UserService();
   String _currentUsername = "Guest";
@@ -59,18 +62,34 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadName();
-    _startLocationTracking();
     Future.delayed(const Duration(seconds: 1), () {
-      _NearlyOtherUsers();
+      _startLocationTracking();
     });
+    Future.delayed(const Duration(seconds: 1), () {
+      _nearlyOtherUsers();
+    });
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() { 
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+       setOfflineStatus();
+    } else if (state == AppLifecycleState.resumed) {
+       _userService.updateLiveLocation(); 
+    }
   }
 
   Future<void> _handleSearch(String address) async {
-    // 1. 叫后台去查坐标 (纯数据)
     LatLng? target = await _userService.getCoordsFromAddress(address);
 
     if (target != null && mounted) {
-      // 2. 前台负责操作控制器 (纯 UI)
       setState(() {
         _followUserLocation = false;
       });
@@ -80,8 +99,9 @@ class _HomePageState extends State<HomePage> {
           CameraPosition(target: target, zoom: 16.0),
         ),
       );
-      
-      // 更新 Marker
+
+      _setDestinationDialog(address, target);
+
       setState(() {
         _markers.add(Marker(
           markerId: MarkerId(address),
@@ -90,10 +110,78 @@ class _HomePageState extends State<HomePage> {
         ));
       });
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Location not found: $address")),
-      );
+      if(mounted){
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Location not found: $address")),
+        );
+      }
     }
+  }
+
+  void _setDestinationDialog(String address, LatLng target) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Destination"),
+        content: Text("Confirm '$address' set to destination?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _confirmNavigation(address, target); 
+            },
+            child: const Text("Set"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmNavigation(String address, LatLng target) async {
+    if (currentp == null) return;
+
+    var routeData = await _userService.getDirections(currentp!, target);
+
+    List<LatLng> points = routeData["Lines"] as List<LatLng>;
+    String duration = routeData["Durations"] as String;
+
+    if (points.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Could not find a road route.")),
+        );
+      }
+      return;
+    }
+    
+    setState(() {
+      destinationp = target;
+      _estimatedTime = duration; 
+
+      _markers.add(Marker(
+        markerId: const MarkerId("destination"),
+        position: target,
+        infoWindow: InfoWindow(title: "Destination: $address"),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+      ));
+
+      line.clear();
+      line.add(Polyline(
+        polylineId: const PolylineId("road_route"),
+        points: points,
+        color: Colors.blueAccent,
+        width: 6,
+        jointType: JointType.round,
+        startCap: Cap.roundCap,
+        endCap: Cap.roundCap,
+      ));
+    });
+
+    await _userService.updateDestination(address, target.latitude, target.longitude);
   }
 
   void _loadName() async {
@@ -112,22 +200,30 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _startLocationTracking() async {
-    var status = await Permission.location.request();
-    if (status.isGranted) {
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
       _userService.updateLiveLocation();
       Geolocator.getPositionStream().listen((Position position) {
-        _mapController?.animateCamera(
-          CameraUpdate.newLatLng(
-            LatLng(position.latitude, position.longitude),
-          ),
-        );
+        currentp = LatLng(position.latitude, position.longitude);
+
+        if (_followUserLocation) {
+          _mapController?.animateCamera(
+            CameraUpdate.newLatLng(
+              LatLng(position.latitude, position.longitude),
+            ),
+          );
+        }
       });
     } else {
-      print("User has already reject tracking request!");
+      print("User has already rejected tracking request!");
     }
   }
 
-  void _NearlyOtherUsers() {
+  void _nearlyOtherUsers() {
     try {
       _userService.getNearbyUsersStream().listen((users) {
         if (!mounted) return;
@@ -146,6 +242,15 @@ class _HomePageState extends State<HomePage> {
       });
     } catch (e) {
       print("NearlyOtherUsers Catch: $e");
+    }
+  }
+
+  void setOfflineStatus() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+        'OnlineStatus': false,
+      });
     }
   }
 
@@ -169,7 +274,7 @@ class _HomePageState extends State<HomePage> {
                   width: double.infinity,
                   height: 45,
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       String destination = _destinationController.text.trim();
                       
                       if (destination.isEmpty) {
@@ -180,18 +285,85 @@ class _HomePageState extends State<HomePage> {
                         return;
                       }
 
-                      // Get firebase data
-                      final currentUserData = RideRequest(
-                        id: FirebaseAuth.instance.currentUser?.uid ?? "guest_id",
-                        name: _currentUsername,
-                        role: _isDriver ? "driver" : "passenger",
-                        start: "Current Location", // 演示时可以写死，或替换为真实反编译的地址
-                        destination: destination,
-                        seats: _isDriver ? _maxSeats : 1,
-                        personality: "Introverted", // 暂时代替，以后你可以在设置页加一个性格选择器
+                      // 1. 显示加载圈
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) => const Center(
+                          child: CircularProgressIndicator(color: Color(0xFF2ECC71))
+                        ),
                       );
 
-                      Navigator.pop(context);
+                      // 🚀 2. 获取真实地理位置 (Geocoding)
+                      String actualStartLocation = "Unknown Location";
+                      if (currentp != null) {
+                        try {
+                          List<Placemark> placemarks = await placemarkFromCoordinates(currentp!.latitude, currentp!.longitude);
+                          if (placemarks.isNotEmpty) {
+                            Placemark place = placemarks.first;
+                            // 如果有街道名就用街道名，否则用大区域名
+                            String street = place.street ?? place.name ?? "";
+                            String area = place.locality ?? place.subLocality ?? "";
+                            actualStartLocation = street.isNotEmpty && area.isNotEmpty ? "$street, $area" : (street.isNotEmpty ? street : area);
+                            if(actualStartLocation.isEmpty) {
+                                actualStartLocation = "Current Location";
+                            }
+                          }
+                        } catch (e) {
+                          print("Address translation failed, using coordinates: $e");
+                          actualStartLocation = "${currentp!.latitude.toStringAsFixed(4)}, ${currentp!.longitude.toStringAsFixed(4)}";
+                        }
+                      }
+
+                      // 3. 获取 Firebase 中的当前用户信息
+                      String email = FirebaseAuth.instance.currentUser?.email ?? "example@gmail.com";
+                      String personality = "Introverted";
+                      String name = _currentUsername;
+
+                      if (email != "example@gmail.com") {
+                        try {
+                          var userQuery = await FirebaseFirestore.instance.collection('users').where('email', isEqualTo: email).limit(1).get();
+
+                          if (userQuery.docs.isNotEmpty) {
+                            var data = userQuery.docs.first.data();
+                            personality = data['personality'] ?? "Introverted";
+                            name = data['username'] ?? _currentUsername;
+                          }
+                        } catch (e) {
+                          print("Error fetching user data from Firebase: $e");
+                        }
+                      }
+
+                      // 4. 组装发给 MatchingPage 的数据
+                      final currentUserData = RideRequest(
+                        email: email,
+                        name: name,
+                        role: _isDriver ? "driver" : "passenger",
+                        start: actualStartLocation, // 🚀 传入真实的起点地址！
+                        destination: destination,
+                        seats: _isDriver ? _maxSeats : 1,
+                        personality: personality,
+                      );
+
+                      // 5. 上传到 Firebase
+                      try {
+                        await FirebaseFirestore.instance.collection('ride_requests').doc(email).set({
+                          'email': email,
+                          'name': name,
+                          'role': _isDriver ? "driver" : "passenger",
+                          'start': actualStartLocation, // 🚀 存入真实的起点地址！
+                          'destination': destination,
+                          'seats': _isDriver ? _maxSeats : 1,
+                          'personality': personality,
+                          'timestamp': FieldValue.serverTimestamp(),
+                        });
+                        print("✅ Successfully uploaded ride request: $actualStartLocation to $destination");
+                      } catch (e) {
+                        print("❌ Failed to upload ride request: $e");
+                      }
+
+                      Navigator.pop(context); // 关 Loading 圈
+                      Navigator.pop(context); // 关 Match 对话框
 
                       Navigator.push(
                         context,
@@ -254,6 +426,7 @@ class _HomePageState extends State<HomePage> {
                     zoom: 14.0,
                   ),
                   markers: _markers,
+                  polylines: line,
                   mapType: MapType.normal, 
                   myLocationEnabled: true, 
                   myLocationButtonEnabled: false, 
@@ -276,18 +449,16 @@ class _HomePageState extends State<HomePage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // FIXED REAL-TIME STREAM
                       StreamBuilder<DocumentSnapshot>(
                         stream: FirebaseFirestore.instance
                             .collection('users')
-                            .doc(FirebaseAuth.instance.currentUser?.email)
+                            .doc(FirebaseAuth.instance.currentUser?.uid)
                             .snapshots(),
                         builder: (context, snapshot) {
                           String displayName = _currentUsername;
 
                           if (snapshot.hasData && snapshot.data!.exists) {
                             var data = snapshot.data!.data() as Map<String, dynamic>;
-                            // FIXED: Changed '+' to '=' for assignment
                             displayName = data['username'] ?? "Guest";
                           }
                           return Text(
@@ -315,10 +486,10 @@ class _HomePageState extends State<HomePage> {
                                 controller: _destinationController,
                                 onSubmitted: (value) {
                                   if (value.isNotEmpty) {
-                                    _handleSearch(value); //Enter address to search
+                                    _handleSearch(value); 
                                   }
                                 },
-                                decoration: InputDecoration(
+                                decoration: const InputDecoration(
                                   hintText: "Search",
                                   border: InputBorder.none,
                                   isDense: true,
@@ -326,8 +497,8 @@ class _HomePageState extends State<HomePage> {
                                 ),
                               ),
                             ),
-                            Icon(Icons.mic, color: Colors.grey),
-                            SizedBox(width: 16),
+                            const Icon(Icons.mic, color: Colors.grey),
+                            const SizedBox(width: 16),
                           ],
                         ),
                       ),
@@ -335,16 +506,10 @@ class _HomePageState extends State<HomePage> {
                       Wrap(
                         spacing: 12.0, 
                         runSpacing: 10.0,
-                        children: [
-                          _buildLocationChip("Pavilion Bukit Jalil"),
-                          _buildLocationChip("APU"),
-                          _buildLocationChip("Parkhill"),
-                        ],
                       ),
                       const SizedBox(height: 20),
                       Row(
                         children: [
-                          // Driver or passenger
                           Expanded(
                             flex: 3,
                             child: Container(
@@ -363,7 +528,6 @@ class _HomePageState extends State<HomePage> {
                           ),
                           const SizedBox(width: 12),
                           
-                          // If isDriver, show capacity combobox
                           if (_isDriver)
                             Expanded(
                               flex: 2,
@@ -397,10 +561,9 @@ class _HomePageState extends State<HomePage> {
                               ),
                             )
                           else
-                            // If passenger, show eta ui
                             Expanded(
                               flex: 2,
-                              child: _buildDetailBox(Icons.access_time_filled_rounded, "EST. TIME", "15-20m", Colors.blue.shade50, Colors.blue,
+                              child: _buildDetailBox(Icons.access_time_filled_rounded, "EST. TIME", _estimatedTime, Colors.blue.shade50, Colors.blue,
                               ),
                             ),
                         ],
@@ -463,7 +626,13 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: Colors.grey.shade100,
-        )  
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          fullLocationName,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 12),
+        ),  
       ),
     );
   }

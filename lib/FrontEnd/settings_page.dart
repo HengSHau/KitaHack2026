@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'edit_profile_page.dart';
 import 'feedback_page.dart';
@@ -88,23 +90,38 @@ class SettingsPage extends StatelessWidget {
   }
 
   Widget _buildProfileHeader() {
-    return Row(
-      children: [
-        const CircleAvatar(
-          radius: 35,
-          backgroundColor: kThemeGreen,
-          child: Icon(Icons.person, size: 40, color: Colors.white),
-        ),
-        const SizedBox(width: 15),
-        const Text(
-          'King Sen', 
-          style: TextStyle(
-            fontSize: 24, 
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
-      ],
+    final String? myEmail=FirebaseAuth.instance.currentUser?.email;
+    return StreamBuilder<QuerySnapshot>(
+      stream:FirebaseFirestore.instance.collection('users').where('email',isEqualTo: myEmail).snapshots(),
+      builder: (BuildContext context,snapshot){
+        String displayName="Loading...";
+
+        if(snapshot.hasData&&snapshot.data!.docs.isNotEmpty){
+          final userData=snapshot.data!.docs.first.data() as Map<String,dynamic>;
+          displayName=userData['username']??"User";
+        }else if(snapshot.hasError){
+          displayName="Error loading";
+        }
+
+        return Row(
+          children:[
+            const CircleAvatar(
+              radius:35,
+              backgroundColor:kThemeGreen,
+              child:Icon(Icons.person,size:40,color:Colors.white),
+            ),
+            const SizedBox(width:15),
+            Text(
+              displayName,
+              style:const TextStyle(
+                fontSize:24,
+                fontWeight:FontWeight.bold,
+                color:Colors.black87,
+              )
+            )
+          ],
+        );
+      },
     );
   }
 
