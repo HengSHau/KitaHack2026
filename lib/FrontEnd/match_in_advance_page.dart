@@ -159,6 +159,8 @@ class _MatchInAdvancePageState extends State<MatchInAdvancePage> {
                               'destination': widget.currentUser.destination, 
                               'seats': widget.currentUser.seats,
                               'personality': widget.currentUser.personality,
+                              'destLat': widget.currentUser.destLat, 
+                              'destLng': widget.currentUser.destLng,    
                               'createdAt': FieldValue.serverTimestamp(),
                             });
 
