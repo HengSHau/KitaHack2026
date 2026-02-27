@@ -23,14 +23,14 @@ class _MatchingPageState extends State<MatchingPage> {
           id: 999, 
           title: "Match Successful！🚗",
           body: "The system has matched you with the most suitable carpooling trip. Click to view.",
-          senderName: "System",
-          senderEmail: "ai@gmail.com",
+          senderName: "-",
+          senderEmail: "-",
           type: "match",
         );
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const MatchSuccessPage()),
-          (route) => route.isFirst, // 这里的逻辑是保留最底层的页面（通常是 Home 或 Login）
+          (route) => route.isFirst, 
         );
       }
     });

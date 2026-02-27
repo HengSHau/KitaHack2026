@@ -160,7 +160,6 @@ class NotificationService {
 }
 
 class AppNotificationListener {
-  // 单例模式改为 AppNotificationListener
   static final AppNotificationListener _instance = AppNotificationListener._internal();
   factory AppNotificationListener() => _instance;
   AppNotificationListener._internal();
@@ -197,14 +196,14 @@ class AppNotificationListener {
             String senderName = data['senderName'] ?? "New Message";
 
             NotificationService.showNotification(
-              id: senderEmail.hashCode, // 使用发件人 ID 哈希，同一个人消息会覆盖
-              title: '来自 $senderName 的新消息',
+              id: senderEmail.hashCode, 
+              title: 'Message from $senderName',
               body: text,
-              senderName: senderName,   // 传递给 Service
-              senderEmail: senderEmail, // 传递给 Service
+              senderName: senderName,
+              senderEmail: senderEmail,
               groupKey: senderEmail, 
             );
-}
+          }
         }
       }
     });
