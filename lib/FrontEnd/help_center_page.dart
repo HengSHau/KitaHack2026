@@ -16,9 +16,8 @@ class HelpCenterPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildFAQTile('How to book a ride?', 'Select your destination on the map, choose a driver, and confirm your request.'),
-          _buildFAQTile('How do I pay for the ride?', 'Currently, we support cash payments directly to the driver or GrabPay/Touch n Go transfers.'),
-          _buildFAQTile('Is Uni-Ride Pool safe?', 'Yes, all users are verified students or staff of APU. We recommend checking the driver/passenger ratings.'),
+          _buildFAQTile('How to book a ride?', 'Select your destination on the map, choose either you are a driver or a passenger, and confirm your request.'),
+          _buildFAQTile('Is GreenNode safe?', 'Yes, all users are verified students or staff of APU currently. We recommend checking the driver/passenger ratings.'),
           _buildFAQTile('Can I cancel my ride?', 'You can cancel your ride at any time before it starts, but please inform your partner via chat first.'),
           
           const SizedBox(height: 32),
