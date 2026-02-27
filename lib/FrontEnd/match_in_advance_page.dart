@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:kitahack2026/backend/match_in_advance_backend.dart.dart';
-// ✅ 必须导入 home_page 以获取 RideRequest 模型
+import 'package:kitahack2026/backend/match_in_advance_backend.dart.dart'; // 保留你原本的 backend 路径
 import 'home_page.dart'; 
+import 'chat_page.dart'; // 🚀 必须导入，为了能跳转到 GroupMessagingPage
 
 class MatchInAdvancePage extends StatefulWidget {
-  // ✅ 1. 新增：接收从大厅传过来的用户数据（消除图3、4报错）
   final RideRequest currentUser;
   const MatchInAdvancePage({super.key, required this.currentUser});
 
@@ -122,7 +121,7 @@ class _MatchInAdvancePageState extends State<MatchInAdvancePage> {
                       label: "Time",
                       hint: "Select Time",
                       icon: Icons.access_time,
-                      value: _selectedTime != null ? _selectedTime!.format(context) : null,
+                      value: _selectedTime?.format(context), // 🚀 修复了蓝线警告
                       onTap: () => _pickTime(context),
                     ),
                     const SizedBox(height: 30),
@@ -136,21 +135,21 @@ class _MatchInAdvancePageState extends State<MatchInAdvancePage> {
                             return;
                           }
 
-                          showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator()));
+                          showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator(color: Color(0xFF2ECC71))));
 
                           try {
-                            // 调用你原本的 backend API (保留你的代码)
+                            // 1. 调用你原本的 backend API
                             await _advanceDate.createadvancedata(
                               datetime: _selectedDate!,
                               hour: _selectedTime!.hour.toDouble(),
                               min: _selectedTime!.minute.toDouble(),
                             );
 
-                            // ✅ 2. 核心：将所有信息写入 Firebase (消除逻辑漏洞)
                             final String dateStr = "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}";
                             final String timeStr = _selectedTime!.format(context);
 
-                            await FirebaseFirestore.instance.collection('scheduled_rides').add({
+                            // 2. 将订单信息写入 Firebase
+                            DocumentReference rideRef = await FirebaseFirestore.instance.collection('scheduled_rides').add({
                               'email': widget.currentUser.email,
                               'name': widget.currentUser.name,
                               'role': widget.currentUser.role,
@@ -163,11 +162,34 @@ class _MatchInAdvancePageState extends State<MatchInAdvancePage> {
                               'createdAt': FieldValue.serverTimestamp(),
                             });
 
+                            // 🚀 3. 【核心新增】在 Firebase 'Groups' 创建专属群聊
+                            List<String> mergedEmails = [widget.currentUser.email]; 
+                            String groupTitle = "Carpool to ${widget.currentUser.destination}_${dateStr}_${timeStr}";
+
+                            DocumentReference groupRef = await FirebaseFirestore.instance.collection('Groups').add({
+                              'groupName': groupTitle,
+                              'participants': mergedEmails, // 把参与者加进群
+                              'lastMessage': "Carpool group created! Say Hi 👋",
+                              'timestamp': FieldValue.serverTimestamp(),
+                              'rideId': rideRef.id, // 绑定订单ID
+                            });
+
                             if (mounted) {
-                              Navigator.pop(context); // 关 Loading 圈
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Match scheduled successfully!"), backgroundColor: Colors.green));
-                              // ✅ 3. 只需 pop 回到大厅，大厅的 StreamBuilder 会自动刷新！
-                              Navigator.pop(context); 
+                              Navigator.pop(context); // 关掉 Loading 圈
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text("Carpool & Group created!"), backgroundColor: Colors.green)
+                              );
+                              
+                              // 🚀 4. 【核心跳转】直接把你拉进刚才建好的群聊！
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => GroupMessagingPage(
+                                    groupId: groupRef.id, // 获取刚建好的群组 ID
+                                    groupName: groupTitle,
+                                  ),
+                                ),
+                              );
                             }
                           } catch (e) {
                             if (mounted) {
