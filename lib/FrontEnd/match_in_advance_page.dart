@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:kitahack2026/backend/match_in_advance_backend.dart.dart';
+import 'available_rides_page.dart';
 
 class MatchInAdvancePage extends StatefulWidget {
   const MatchInAdvancePage({super.key});
@@ -205,7 +206,19 @@ class _MatchInAdvancePageState extends State<MatchInAdvancePage> {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text("Match scheduled successfully!"), backgroundColor: Colors.green),
                               );
-                              Navigator.pop(context); 
+
+                              final newlyCreatedRide = ScheduledRide(
+                                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                                driverName: "You (Myvi)", // 演示效果：标识这是自己发布的车
+                                date: "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}",
+                                time: _selectedTime!.format(context),
+                                start: "Current Location",
+                                destination: "Selected Destination", 
+                                availableSeats: 3,
+                                personality: "Introverted", 
+                              );
+
+                              Navigator.pop(context, newlyCreatedRide); 
                             }
                           } catch (e) {
                             if (mounted) {

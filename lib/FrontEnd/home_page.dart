@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kitahack2026/FrontEnd/available_rides_page.dart';
 import 'package:kitahack2026/backend/home_backend.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -6,7 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart'; 
 import 'package:firebase_auth/firebase_auth.dart';    
 import 'package:geocoding/geocoding.dart';
-import 'match_in_advance_page.dart';
+import 'available_rides_page.dart';
 import 'settings_page.dart';
 import 'chat_page.dart';
 import 'matching_page.dart';
@@ -216,7 +217,7 @@ class _HomePageState extends State<HomePage> {
                       Navigator.pop(context); 
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const MatchInAdvancePage()),
+                        MaterialPageRoute(builder: (context) => const AvailableRidesPage()),
                       );
                     },
                     style: ElevatedButton.styleFrom(
