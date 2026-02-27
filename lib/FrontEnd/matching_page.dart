@@ -45,8 +45,8 @@ class _MatchingPageState extends State<MatchingPage> {
         if (data['email'] == widget.currentUser.email) continue;
 
         // Get destination address
-        double otherLat = data['dest_lat'] ?? 0.0;
-        double otherLng = data['dest_lng'] ?? 0.0;
+        double otherLat = (data['destLat'] ?? data['dest_lat'] ?? 0.0).toDouble();
+        double otherLng = (data['destLng'] ?? data['dest_lng'] ?? 0.0).toDouble();
         
         // Get personal address
         double myLat = widget.currentUser.destLat; 
@@ -65,8 +65,8 @@ class _MatchingPageState extends State<MatchingPage> {
             destination: data['destination'],
             seats: data['seats'] ?? 1,
             personality: data['personality'] ?? "Introverted",
-            destLat: data['dest_lat']?.toDouble() ?? 0.0, 
-            destLng: data['dest_lng']?.toDouble() ?? 0.0,
+            destLat: otherLat, 
+            destLng: otherLng,
           )
         );
         }
@@ -174,12 +174,26 @@ class _MatchingPageState extends State<MatchingPage> {
       String passStart = currentUser.role == 'passenger' ? currentUser.start : candidate.start;
       String passEnd = currentUser.role == 'passenger' ? currentUser.destination : candidate.destination;
 
-      bool isRouteMatch = await aiService.checkMatch(
+      double physicalDist = Geolocator.distanceBetween(
+      currentUser.destLat, currentUser.destLng, 
+      candidate.destLat, candidate.destLng
+    );
+
+    bool isRouteMatch = false;
+
+    if (physicalDist < 100000000000000) {
+
+      isRouteMatch = true; 
+
+    } else {
+      isRouteMatch = await aiService.checkMatch(
         driverStart: driverStart,
         driverEnd: driverEnd,
         passengerStart: passStart,
         passengerEnd: passEnd,
       );
+    }
+
 
       if (isRouteMatch) {
         if (bestMatch == null) {
