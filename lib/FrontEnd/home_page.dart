@@ -15,11 +15,11 @@ class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<HomePage> createState() => _HomePageState(); 
 }
 
 class RideRequest {
-  final String id;
+  final String email;
   final String name;
   final String role;
   final String start;
@@ -28,7 +28,7 @@ class RideRequest {
   final String personality;
 
   RideRequest({
-    required this.id,
+    required this.email,
     required this.name,
     required this.role,
     required this.start,
@@ -38,9 +38,7 @@ class RideRequest {
   });
 }
 
-class _HomePageState extends State<HomePage> {
-  bool _isDriver = false;
-  int _maxSeats = 1;
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
   final TextEditingController _destinationController = TextEditingController();
   
@@ -67,66 +65,64 @@ class _HomePageState extends State<HomePage> {
       _startLocationTracking();
     });
     Future.delayed(const Duration(seconds: 1), () {
-      _NearlyOtherUsers();
+      _nearlyOtherUsers();
     });
     WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() { 
-    super.dispose();
     WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   @override
-  void ChangingonlineState(AppLifecycleState state) {
-    // When user quit the app will set to offline
+  void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
        setOfflineStatus();
     } else if (state == AppLifecycleState.resumed) {
-      // while back to the app updated status to online
        _userService.updateLiveLocation(); 
     }
   }
 
   Future<void> _handleSearch(String address) async {
-  // Check location 
-  LatLng? target = await _userService.getCoordsFromAddress(address);
+    LatLng? target = await _userService.getCoordsFromAddress(address);
 
-  if (target != null && mounted) {
-    setState(() {
-      _followUserLocation = false;
-    });
+    if (target != null && mounted) {
+      setState(() {
+        _followUserLocation = false;
+      });
 
-    _mapController?.animateCamera(
-      CameraUpdate.newCameraPosition(
-        CameraPosition(target: target, zoom: 16.0),
-      ),
-    );
+      _mapController?.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(target: target, zoom: 16.0),
+        ),
+      );
 
-    SetDestinationDialog(address, target);
+      _setDestinationDialog(address, target);
 
-    // Updated Marker
-    setState(() {
-      _markers.add(Marker(
-        markerId: MarkerId(address),
-        position: target,
-        infoWindow: InfoWindow(title: address),
-      ));
-    });
-  } else {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Location not found: $address")),
-    );
+      setState(() {
+        _markers.add(Marker(
+          markerId: MarkerId(address),
+          position: target,
+          infoWindow: InfoWindow(title: address),
+        ));
+      });
+    } else {
+      if(mounted){
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Location not found: $address")),
+        );
+      }
+    }
   }
-  }
 
-  void SetDestinationDialog(String address, LatLng target) {
+  void _setDestinationDialog(String address, LatLng target) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Destination"),
-        content: Text("Comfirm '$address' set to destination?"),
+        content: Text("Confirm '$address' set to destination?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -144,54 +140,48 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-// Use to get the user conformation for set destination to get estimated time and polylines
-void _confirmNavigation(String address, LatLng target) async {
-  if (currentp == null) return;
+  void _confirmNavigation(String address, LatLng target) async {
+    if (currentp == null) return;
 
-  // Direction Api
-  var routeData = await _userService.getDirections(currentp!, target);
+    var routeData = await _userService.getDirections(currentp!, target);
 
-  // Get polylines and duration data
-  List<LatLng> points = routeData["Lines"] as List<LatLng>;
-  String duration = routeData["Durations"] as String;
+    List<LatLng> points = routeData["Lines"] as List<LatLng>;
+    String duration = routeData["Durations"] as String;
 
-  if (points.isEmpty) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Could not find a road route.")),
-      );
+    if (points.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Could not find a road route.")),
+        );
+      }
+      return;
     }
-    return;
+    
+    setState(() {
+      destinationp = target;
+      _estimatedTime = duration; 
+
+      _markers.add(Marker(
+        markerId: const MarkerId("destination"),
+        position: target,
+        infoWindow: InfoWindow(title: "Destination: $address"),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+      ));
+
+      line.clear();
+      line.add(Polyline(
+        polylineId: const PolylineId("road_route"),
+        points: points,
+        color: Colors.blueAccent,
+        width: 6,
+        jointType: JointType.round,
+        startCap: Cap.roundCap,
+        endCap: Cap.roundCap,
+      ));
+    });
+
+    await _userService.updateDestination(address, target.latitude, target.longitude);
   }
-  
-  //Updated polylines and duration data
-  setState(() {
-    destinationp = target;
-    _estimatedTime = duration; 
-
-    // Updated marker
-    _markers.add(Marker(
-      markerId: const MarkerId("destination"),
-      position: target,
-      infoWindow: InfoWindow(title: "Destination: $address"),
-      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-    ));
-
-    // Updated polylines
-    line.clear();
-    line.add(Polyline(
-      polylineId: const PolylineId("road_route"),
-      points: points,
-      color: Colors.blueAccent,
-      width: 6,
-      jointType: JointType.round,
-      startCap: Cap.roundCap,
-      endCap: Cap.roundCap,
-    ));
-  });
-
-  await _userService.updateDestination(address, target.latitude, target.longitude);
-}
 
   void _loadName() async {
     String name = await _userService.getCurrentUsername();
@@ -202,7 +192,6 @@ void _confirmNavigation(String address, LatLng target) async {
     }
   }
 
-  //ensure that the username will be showing correctly while profile changing
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -210,24 +199,30 @@ void _confirmNavigation(String address, LatLng target) async {
   }
 
   void _startLocationTracking() async {
-    var status = await Permission.location.request();
-    if (status.isGranted) {
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    if (permission == LocationPermission.whileInUse || permission == LocationPermission.always) {
       _userService.updateLiveLocation();
       Geolocator.getPositionStream().listen((Position position) {
         currentp = LatLng(position.latitude, position.longitude);
 
-        _mapController?.animateCamera(
-          CameraUpdate.newLatLng(
-            LatLng(position.latitude, position.longitude),
-          ),
-        );
+        if (_followUserLocation) {
+          _mapController?.animateCamera(
+            CameraUpdate.newLatLng(
+              LatLng(position.latitude, position.longitude),
+            ),
+          );
+        }
       });
     } else {
-      print("User has already reject tracking request!");
+      print("User has already rejected tracking request!");
     }
   }
 
-  void _NearlyOtherUsers() {
+  void _nearlyOtherUsers() {
     try {
       _userService.getNearbyUsersStream().listen((users) {
         if (!mounted) return;
@@ -278,7 +273,7 @@ void _confirmNavigation(String address, LatLng target) async {
                   width: double.infinity,
                   height: 45,
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       String destination = _destinationController.text.trim();
                       
                       if (destination.isEmpty) {
@@ -289,18 +284,85 @@ void _confirmNavigation(String address, LatLng target) async {
                         return;
                       }
 
-                      // Get firebase data
-                      final currentUserData = RideRequest(
-                        id: FirebaseAuth.instance.currentUser?.uid ?? "guest_id",
-                        name: _currentUsername,
-                        role: _isDriver ? "driver" : "passenger",
-                        start: "Current Location", // 演示时可以写死，或替换为真实反编译的地址
-                        destination: destination,
-                        seats: _isDriver ? _maxSeats : 1,
-                        personality: "Introverted", // 暂时代替，以后你可以在设置页加一个性格选择器
+                      // 1. 显示加载圈
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) => const Center(
+                          child: CircularProgressIndicator(color: Color(0xFF2ECC71))
+                        ),
                       );
 
-                      Navigator.pop(context);
+                      // 🚀 2. 获取真实地理位置 (Geocoding)
+                      String actualStartLocation = "Unknown Location";
+                      if (currentp != null) {
+                        try {
+                          List<Placemark> placemarks = await placemarkFromCoordinates(currentp!.latitude, currentp!.longitude);
+                          if (placemarks.isNotEmpty) {
+                            Placemark place = placemarks.first;
+                            // 如果有街道名就用街道名，否则用大区域名
+                            String street = place.street ?? place.name ?? "";
+                            String area = place.locality ?? place.subLocality ?? "";
+                            actualStartLocation = street.isNotEmpty && area.isNotEmpty ? "$street, $area" : (street.isNotEmpty ? street : area);
+                            if(actualStartLocation.isEmpty) {
+                                actualStartLocation = "Current Location";
+                            }
+                          }
+                        } catch (e) {
+                          print("Address translation failed, using coordinates: $e");
+                          actualStartLocation = "${currentp!.latitude.toStringAsFixed(4)}, ${currentp!.longitude.toStringAsFixed(4)}";
+                        }
+                      }
+
+                      // 3. 获取 Firebase 中的当前用户信息
+                      String email = FirebaseAuth.instance.currentUser?.email ?? "example@gmail.com";
+                      String personality = "Introverted";
+                      String name = _currentUsername;
+
+                      if (email != "example@gmail.com") {
+                        try {
+                          var userQuery = await FirebaseFirestore.instance.collection('users').where('email', isEqualTo: email).limit(1).get();
+
+                          if (userQuery.docs.isNotEmpty) {
+                            var data = userQuery.docs.first.data();
+                            personality = data['personality'] ?? "Introverted";
+                            name = data['username'] ?? _currentUsername;
+                          }
+                        } catch (e) {
+                          print("Error fetching user data from Firebase: $e");
+                        }
+                      }
+
+                      // 4. 组装发给 MatchingPage 的数据
+                      final currentUserData = RideRequest(
+                        email: email,
+                        name: name,
+                        role: _isDriver ? "driver" : "passenger",
+                        start: actualStartLocation, // 🚀 传入真实的起点地址！
+                        destination: destination,
+                        seats: _isDriver ? _maxSeats : 1,
+                        personality: personality,
+                      );
+
+                      // 5. 上传到 Firebase
+                      try {
+                        await FirebaseFirestore.instance.collection('ride_requests').doc(email).set({
+                          'email': email,
+                          'name': name,
+                          'role': _isDriver ? "driver" : "passenger",
+                          'start': actualStartLocation, // 🚀 存入真实的起点地址！
+                          'destination': destination,
+                          'seats': _isDriver ? _maxSeats : 1,
+                          'personality': personality,
+                          'timestamp': FieldValue.serverTimestamp(),
+                        });
+                        print("✅ Successfully uploaded ride request: $actualStartLocation to $destination");
+                      } catch (e) {
+                        print("❌ Failed to upload ride request: $e");
+                      }
+
+                      Navigator.pop(context); // 关 Loading 圈
+                      Navigator.pop(context); // 关 Match 对话框
 
                       Navigator.push(
                         context,
@@ -386,7 +448,6 @@ void _confirmNavigation(String address, LatLng target) async {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // FIXED REAL-TIME STREAM
                       StreamBuilder<DocumentSnapshot>(
                         stream: FirebaseFirestore.instance
                             .collection('users')
@@ -397,7 +458,6 @@ void _confirmNavigation(String address, LatLng target) async {
 
                           if (snapshot.hasData && snapshot.data!.exists) {
                             var data = snapshot.data!.data() as Map<String, dynamic>;
-                            // FIXED: Changed '+' to '=' for assignment
                             displayName = data['username'] ?? "Guest";
                           }
                           return Text(
@@ -425,10 +485,10 @@ void _confirmNavigation(String address, LatLng target) async {
                                 controller: _destinationController,
                                 onSubmitted: (value) {
                                   if (value.isNotEmpty) {
-                                    _handleSearch(value); //Enter address to search
+                                    _handleSearch(value); 
                                   }
                                 },
-                                decoration: InputDecoration(
+                                decoration: const InputDecoration(
                                   hintText: "Search",
                                   border: InputBorder.none,
                                   isDense: true,
@@ -436,8 +496,8 @@ void _confirmNavigation(String address, LatLng target) async {
                                 ),
                               ),
                             ),
-                            Icon(Icons.mic, color: Colors.grey),
-                            SizedBox(width: 16),
+                            const Icon(Icons.mic, color: Colors.grey),
+                            const SizedBox(width: 16),
                           ],
                         ),
                       ),
@@ -449,7 +509,6 @@ void _confirmNavigation(String address, LatLng target) async {
                       const SizedBox(height: 20),
                       Row(
                         children: [
-                          // Driver or passenger
                           Expanded(
                             flex: 3,
                             child: Container(
@@ -468,7 +527,6 @@ void _confirmNavigation(String address, LatLng target) async {
                           ),
                           const SizedBox(width: 12),
                           
-                          // If isDriver, show capacity combobox
                           if (_isDriver)
                             Expanded(
                               flex: 2,
@@ -502,7 +560,6 @@ void _confirmNavigation(String address, LatLng target) async {
                               ),
                             )
                           else
-                            // If passenger, show eta ui
                             Expanded(
                               flex: 2,
                               child: _buildDetailBox(Icons.access_time_filled_rounded, "EST. TIME", _estimatedTime, Colors.blue.shade50, Colors.blue,
@@ -568,7 +625,13 @@ void _confirmNavigation(String address, LatLng target) async {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: Colors.grey.shade100,
-        )  
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          fullLocationName,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 12),
+        ),  
       ),
     );
   }
