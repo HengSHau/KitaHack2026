@@ -44,12 +44,17 @@ class _HomePageState extends State<HomePage> {
 
   final TextEditingController _destinationController = TextEditingController();
   
+  bool _isDriver = false;
+  int _maxSeats = 1;
   Set<Marker> _markers = {};
   int _selectedIndex = 0;
   bool _followUserLocation = true;
+  LatLng? currentp;
+  LatLng? destinationp;
+  Set<Polyline> line = {};
+  String _estimatedTime = "N/A";
   
   GoogleMapController? _mapController;  
-  final LatLng _defaultLocation = const LatLng(3.055, 101.69);
 
   final UserService _userService = UserService();
   String _currentUsername = "Guest";
@@ -58,42 +63,135 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _loadName();
-    _startLocationTracking();
+    Future.delayed(const Duration(seconds: 1), () {
+      _startLocationTracking();
+    });
     Future.delayed(const Duration(seconds: 1), () {
       _NearlyOtherUsers();
     });
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() { 
+    super.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+  }
+
+  @override
+  void ChangingonlineState(AppLifecycleState state) {
+    // When user quit the app will set to offline
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+       setOfflineStatus();
+    } else if (state == AppLifecycleState.resumed) {
+      // while back to the app updated status to online
+       _userService.updateLiveLocation(); 
+    }
   }
 
   Future<void> _handleSearch(String address) async {
-    // 1. 叫后台去查坐标 (纯数据)
-    LatLng? target = await _userService.getCoordsFromAddress(address);
+  // Check location 
+  LatLng? target = await _userService.getCoordsFromAddress(address);
 
-    if (target != null && mounted) {
-      // 2. 前台负责操作控制器 (纯 UI)
-      setState(() {
-        _followUserLocation = false;
-      });
+  if (target != null && mounted) {
+    setState(() {
+      _followUserLocation = false;
+    });
 
-      _mapController?.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(target: target, zoom: 16.0),
-        ),
-      );
-      
-      // 更新 Marker
-      setState(() {
-        _markers.add(Marker(
-          markerId: MarkerId(address),
-          position: target,
-          infoWindow: InfoWindow(title: address),
-        ));
-      });
-    } else {
+    _mapController?.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: target, zoom: 16.0),
+      ),
+    );
+
+    SetDestinationDialog(address, target);
+
+    // Updated Marker
+    setState(() {
+      _markers.add(Marker(
+        markerId: MarkerId(address),
+        position: target,
+        infoWindow: InfoWindow(title: address),
+      ));
+    });
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Location not found: $address")),
+    );
+  }
+  }
+
+  void SetDestinationDialog(String address, LatLng target) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Destination"),
+        content: Text("Comfirm '$address' set to destination?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _confirmNavigation(address, target); 
+            },
+            child: const Text("Set"),
+          ),
+        ],
+      ),
+    );
+  }
+
+// Use to get the user conformation for set destination to get estimated time and polylines
+void _confirmNavigation(String address, LatLng target) async {
+  if (currentp == null) return;
+
+  // Direction Api
+  var routeData = await _userService.getDirections(currentp!, target);
+
+  // Get polylines and duration data
+  List<LatLng> points = routeData["Lines"] as List<LatLng>;
+  String duration = routeData["Durations"] as String;
+
+  if (points.isEmpty) {
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Location not found: $address")),
+        const SnackBar(content: Text("Could not find a road route.")),
       );
     }
+    return;
   }
+  
+  //Updated polylines and duration data
+  setState(() {
+    destinationp = target;
+    _estimatedTime = duration; 
+
+    // Updated marker
+    _markers.add(Marker(
+      markerId: const MarkerId("destination"),
+      position: target,
+      infoWindow: InfoWindow(title: "Destination: $address"),
+      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+    ));
+
+    // Updated polylines
+    line.clear();
+    line.add(Polyline(
+      polylineId: const PolylineId("road_route"),
+      points: points,
+      color: Colors.blueAccent,
+      width: 6,
+      jointType: JointType.round,
+      startCap: Cap.roundCap,
+      endCap: Cap.roundCap,
+    ));
+  });
+
+  await _userService.updateDestination(address, target.latitude, target.longitude);
+}
 
   void _loadName() async {
     String name = await _userService.getCurrentUsername();
@@ -104,6 +202,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  //ensure that the username will be showing correctly while profile changing
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -115,6 +214,8 @@ class _HomePageState extends State<HomePage> {
     if (status.isGranted) {
       _userService.updateLiveLocation();
       Geolocator.getPositionStream().listen((Position position) {
+        currentp = LatLng(position.latitude, position.longitude);
+
         _mapController?.animateCamera(
           CameraUpdate.newLatLng(
             LatLng(position.latitude, position.longitude),
@@ -145,6 +246,15 @@ class _HomePageState extends State<HomePage> {
       });
     } catch (e) {
       print("NearlyOtherUsers Catch: $e");
+    }
+  }
+
+  void setOfflineStatus() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+        'OnlineStatus': false,
+      });
     }
   }
 
@@ -253,6 +363,7 @@ class _HomePageState extends State<HomePage> {
                     zoom: 14.0,
                   ),
                   markers: _markers,
+                  polylines: line,
                   mapType: MapType.normal, 
                   myLocationEnabled: true, 
                   myLocationButtonEnabled: false, 
@@ -279,7 +390,7 @@ class _HomePageState extends State<HomePage> {
                       StreamBuilder<DocumentSnapshot>(
                         stream: FirebaseFirestore.instance
                             .collection('users')
-                            .doc(FirebaseAuth.instance.currentUser?.email)
+                            .doc(FirebaseAuth.instance.currentUser?.uid)
                             .snapshots(),
                         builder: (context, snapshot) {
                           String displayName = _currentUsername;
@@ -334,11 +445,6 @@ class _HomePageState extends State<HomePage> {
                       Wrap(
                         spacing: 12.0, 
                         runSpacing: 10.0,
-                        children: [
-                          _buildLocationChip("Pavilion Bukit Jalil"),
-                          _buildLocationChip("APU"),
-                          _buildLocationChip("Parkhill"),
-                        ],
                       ),
                       const SizedBox(height: 20),
                       Row(
@@ -399,7 +505,7 @@ class _HomePageState extends State<HomePage> {
                             // If passenger, show eta ui
                             Expanded(
                               flex: 2,
-                              child: _buildDetailBox(Icons.access_time_filled_rounded, "EST. TIME", "15-20m", Colors.blue.shade50, Colors.blue,
+                              child: _buildDetailBox(Icons.access_time_filled_rounded, "EST. TIME", _estimatedTime, Colors.blue.shade50, Colors.blue,
                               ),
                             ),
                         ],

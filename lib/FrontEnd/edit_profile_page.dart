@@ -14,6 +14,7 @@ class EditProfilePage extends StatefulWidget {
 class _EditProfilePageState extends State<EditProfilePage> {
   // NECESSARY: Removed hardcoded text to allow loading from database
   final TextEditingController usernameController = TextEditingController();
+  String? originalUsername;
   String? selectedPersonality;
   bool _isLoading = false; // NECESSARY for async UX
 
@@ -34,7 +35,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
       if (doc.exists && mounted) {
         final data = doc.data() as Map<String, dynamic>;
         setState(() {
-          usernameController.text = data['username'] ?? "";
+          String currentName=data['username']??"";
+          usernameController.text = currentName;
+          originalUsername=currentName;
           selectedPersonality = data['personality'] ?? "Introverted";
         });
       }
@@ -43,6 +46,31 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   // NECESSARY: Save logic
   Future<void> _saveProfile() async {
+    String enteredName=usernameController.text.trim();
+
+    String finalName=enteredName;
+    if(finalName.isEmpty){
+      if(originalUsername!=null&&originalUsername!.isNotEmpty){
+        finalName=originalUsername!;
+        usernameController.text=finalName;
+      }else{
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content:Text("Username cannot be empty")),
+        );
+        return;
+      }
+    }
+
+    if(selectedPersonality==null||selectedPersonality!.isEmpty){
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please select a personality type."),
+          backgroundColor: Colors.orange,
+        )
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try{
@@ -65,7 +93,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
           if(!mounted)return;
 
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content:Text("Profile updted!"),backgroundColor:kThemeGreen),
+            const SnackBar(content:Text("Profile updated!"),backgroundColor:kThemeGreen),
           );
           Navigator.pop(context);
         }
