@@ -385,19 +385,45 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   width: double.infinity,
                   height: 45,
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
+                      // 1. 拦截：必须先填目的地才能进大厅
+                      String destination = _destinationController.text.trim();
+                      if (destination.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Please enter a destination first!")),
+                        );
+                        return;
+                      }
+
+                      // 2. 简单组装大厅需要的数据包裹 (目的地最重要)
+                      String email = FirebaseAuth.instance.currentUser?.email ?? "example@gmail.com";
+                      final currentUserData = RideRequest(
+                        email: email,
+                        name: _currentUsername,
+                        role: _isDriver ? "driver" : "passenger",
+                        start: "Current Location", 
+                        destination: destination, // 🎯 核心：把目的地带过去！
+                        seats: _isDriver ? _maxSeats : 1,
+                        personality: "Introverted", 
+                      );
+
+                      // 3. 关弹窗并跳转
                       Navigator.pop(context); 
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => const AvailableRidesPage()),
+                        MaterialPageRoute(
+                          // ✅ 传入 currentUserData，消除红线！
+                          builder: (context) => AvailableRidesPage(currentUser: currentUserData)
+                        ),
                       );
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFAAAAAA),
+                      backgroundColor: const Color(0xFFAAAAAA), // 保留你原本的灰色设计
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    child: const Text("Match in Advance", style: TextStyle(fontWeight: FontWeight.w600)),
+                    // 顺便把文字改成更符合大厅逻辑的文案
+                    child: const Text("View Available Rides", style: TextStyle(fontWeight: FontWeight.w600)),
                   ),
                 ),
               ],
