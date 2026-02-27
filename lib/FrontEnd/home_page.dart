@@ -27,6 +27,8 @@ class RideRequest {
   final String destination;
   final int seats;
   final String personality;
+  final double destLat;
+  final double destLng;
 
   RideRequest({
     required this.email,
@@ -36,6 +38,8 @@ class RideRequest {
     required this.destination,
     required this.seats,
     required this.personality,
+    required this.destLat,
+    required this.destLng,
   });
 }
 
@@ -181,7 +185,19 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       ));
     });
 
-    await _userService.updateDestination(address, target.latitude, target.longitude);
+    String standardizedAddress = address; 
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(target.latitude, target.longitude);
+      if (placemarks.isNotEmpty) {
+        Placemark place = placemarks.first;
+
+        standardizedAddress = "${place.street}, ${place.locality}";
+      }
+    } catch (e) {
+      print("Standardization failed: $e");
+    }
+
+    await _userService.updateDestination(standardizedAddress, target.latitude, target.longitude);
   }
 
   void _loadName() async {
@@ -343,6 +359,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         destination: destination,
                         seats: _isDriver ? _maxSeats : 1,
                         personality: personality,
+                        destLat: destinationp?.latitude ?? 0.0, 
+                        destLng: destinationp?.longitude ?? 0.0,
                       );
 
                       // 5. 上传到 Firebase
@@ -355,6 +373,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           'destination': destination,
                           'seats': _isDriver ? _maxSeats : 1,
                           'personality': personality,
+                          'destLat': destinationp?.latitude ?? 0.0, 
+                          'destLng': destinationp?.longitude ?? 0.0,
                           'timestamp': FieldValue.serverTimestamp(),
                         });
                         print("✅ Successfully uploaded ride request: $actualStartLocation to $destination");
@@ -405,6 +425,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         destination: destination, // 🎯 核心：把目的地带过去！
                         seats: _isDriver ? _maxSeats : 1,
                         personality: "Introverted", 
+                        destLat: destinationp?.latitude ?? 0.0, 
+                        destLng: destinationp?.longitude ?? 0.0,
                       );
 
                       // 3. 关弹窗并跳转
