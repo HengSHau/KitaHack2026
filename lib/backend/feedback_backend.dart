@@ -11,7 +11,7 @@ class FeedbackService {
       String? userEmail = _auth.currentUser?.email;
 
       if (userEmail != null && feedbackText.trim().isNotEmpty) {
-        // Adds a new document with an auto-generated ID
+        // Add a new document with an auto-generated ID
         await _firestore.collection('Feedback').add({
           'email': userEmail,
           'content': feedbackText.trim(),

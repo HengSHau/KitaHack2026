@@ -4,16 +4,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 class ChatBackend {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // UPDATED: Added receiverId and participants for the selection page preview
   Future<void> sendMessage(String text, String myEmail, String contactEmail) async {
     if (text.trim().isEmpty) return;
 
-    // Use a top-level 'Chat' collection to match your ChatSelectionPage logic
     await _firestore.collection('Chat').add({
       'text': text.trim(),
       'sender': myEmail,
       'receiver': contactEmail,
-      // CRITICAL: This allows the selection page to find this message
       'participants': [myEmail, contactEmail], 
       'timestamp': FieldValue.serverTimestamp(),
       'isRead': false, // For the bold unread status
@@ -38,7 +35,7 @@ class ChatBackend {
     return docRef.id; 
   }
 
-  // 2. MISSING METHOD: Sends a text to the specific group (Used by GroupMessagingPage)
+  // Sends a text to the specific group
   Future<void> sendGroupMessage(String groupId, String text, String senderEmail) async {
     if (text.trim().isEmpty) return;
 
@@ -55,5 +52,4 @@ class ChatBackend {
       'timestamp': FieldValue.serverTimestamp(),
     });
   }
-  
 }

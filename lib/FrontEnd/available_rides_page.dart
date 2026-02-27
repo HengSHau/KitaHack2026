@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'match_in_advance_page.dart';
-import 'home_page.dart'; // ✅ 获取 RideRequest 模型
+import 'home_page.dart'; 
 
 const Color kThemeGreen = Color(0xFF2ECC71);
 
 class AvailableRidesPage extends StatefulWidget {
-  // ✅ 接收从主页传来的 currentUser (消除图 4 红线)
   final RideRequest currentUser;
   const AvailableRidesPage({super.key, required this.currentUser});
 
@@ -34,12 +33,8 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
         centerTitle: true,
       ),
       
-      // ✅ 1. 移除 Firebase 端严格的 .where 查询，拉取所有订单在本地过滤
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('scheduled_rides')
-            // 去掉了 .where(...)，保证一定能拿到数据
-            .snapshots(),
+        stream: FirebaseFirestore.instance.collection('scheduled_rides').snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator(color: kThemeGreen));
@@ -54,22 +49,13 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
             );
           }
 
-          // ✅ 2. 本地智能过滤引擎
           final validDocs = snapshot.data!.docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
-            
-            // 获取数据库里的目的地和当前用户搜索的目的地
             final String dbDest = (data['destination'] ?? '').toString().trim().toLowerCase();
             final String targetDest = widget.currentUser.destination.trim().toLowerCase();
-
-            // 防呆设计：只要关键字互相包含，就算顺路！(比如 "APU" 和 "APU New Campus" 会被视为匹配)
-            bool isDestMatch = dbDest.contains(targetDest) || targetDest.contains(dbDest);
-
-            // 🚀 黑客松演示模式：强制返回 true，忽略角色和本人的限制，只要地点对得上就显示！
-            return isDestMatch; 
+            return dbDest.contains(targetDest) || targetDest.contains(dbDest);
           }).toList();
 
-          // ✅ 3. 如果地点没匹配上，显示友好的提示
           if (validDocs.isEmpty) {
             return Center(
               child: Text("No matching rides found for '${widget.currentUser.destination}'.\nTry searching something else.", 
@@ -81,29 +67,44 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
             padding: const EdgeInsets.all(16.0),
             itemCount: validDocs.length,
             itemBuilder: (context, index) {
-              final data = validDocs[index].data() as Map<String, dynamic>;
-              return _buildRideCard(data, context);
+              final doc = validDocs[index];
+              return _buildRideCard(doc, context);
             },
           );
         },
       ),
 
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: kThemeGreen,
-        elevation: 4,
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => MatchInAdvancePage(currentUser: widget.currentUser)),
-          );
-        },
-        child: const Icon(Icons.add, color: Colors.white, size: 30),
-      ),
+      floatingActionButton: widget.currentUser.role == 'driver' 
+          ? FloatingActionButton(
+              backgroundColor: kThemeGreen,
+              elevation: 4,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => MatchInAdvancePage(currentUser: widget.currentUser)),
+                );
+              },
+              child: const Icon(Icons.add, color: Colors.white, size: 30),
+            )
+          : null,
     );
   }
 
-  // ✅ 接收 Firebase 数据的卡片 UI
-  Widget _buildRideCard(Map<String, dynamic> data, BuildContext context) {
+  Widget _buildRideCard(DocumentSnapshot doc, BuildContext context) {
+    final data = doc.data() as Map<String, dynamic>;
+    final String docId = doc.id;
+    
+    // Calculate remaining seat(s)
+    final List<dynamic> joinedUsers = data['joinedUsers'] ?? [];
+    final int joinedCount = joinedUsers.length;
+    final int totalSeats = data['seats'] ?? 1;
+    final int seatsLeft = totalSeats - joinedCount;
+    
+    final String currentUserEmail = FirebaseAuth.instance.currentUser?.email ?? "";
+    final bool isMyOwnRide = (data['email'] == currentUserEmail);
+    final bool hasJoined = joinedUsers.contains(currentUserEmail);
+    final bool isFull = seatsLeft <= 0;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16.0),
       decoration: BoxDecoration(
@@ -137,16 +138,31 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
                     ),
                   ],
                 ),
+                // Show remaining seat(s)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(color: kThemeGreen.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                  decoration: BoxDecoration(
+                    color: isFull ? Colors.red.withOpacity(0.1) : kThemeGreen.withOpacity(0.1), 
+                    borderRadius: BorderRadius.circular(20)
+                  ),
                   child: Text(
-                    "${data['seats']} Seats",
-                    style: const TextStyle(color: kThemeGreen, fontWeight: FontWeight.bold, fontSize: 12),
+                    isFull ? "Full" : "$seatsLeft Seats Left",
+                    style: TextStyle(
+                      color: isFull ? Colors.red : kThemeGreen, 
+                      fontWeight: FontWeight.bold, fontSize: 12
+                    ),
                   ),
                 ),
               ],
             ),
+            
+            // Show person(s) joined
+            if (joinedCount > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0, left: 52.0),
+                child: Text("👥 $joinedCount person(s) already joined", style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontStyle: FontStyle.italic)),
+              ),
+
             const Padding(padding: EdgeInsets.symmetric(vertical: 12.0), child: Divider()),
             Row(
               children: [
@@ -180,18 +196,39 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
               ],
             ),
             const SizedBox(height: 16),
+            
             SizedBox(
               width: double.infinity, height: 45,
               child: ElevatedButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Successfully joined ${data['name']}'s ride! 🌍")),
-                  );
+                onPressed: (isMyOwnRide || hasJoined || isFull) ? null : () async {
+                  try {
+                    await FirebaseFirestore.instance.collection('scheduled_rides').doc(docId).update({
+                      'joinedUsers': FieldValue.arrayUnion([currentUserEmail])
+                    });
+                    
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Successfully joined ${data['name']}'s ride! 🌍"), backgroundColor: Colors.green),
+                      );
+                    }
+                  } catch (e) {
+                    print("Join error: $e");
+                  }
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: kThemeGreen, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), elevation: 0,
+                  backgroundColor: (isMyOwnRide || hasJoined || isFull) ? Colors.grey.shade200 : kThemeGreen, 
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)), 
+                  elevation: 0,
                 ),
-                child: const Text("Join Ride", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                child: Text(
+                  isMyOwnRide ? "Your Carpool" :
+                  hasJoined ? "Joined ✅" :
+                  isFull ? "Ride Full" : "Join Ride",
+                  style: TextStyle(
+                    color: (isMyOwnRide || hasJoined || isFull) ? Colors.grey.shade500 : Colors.white, 
+                    fontWeight: FontWeight.bold
+                  )
+                ),
               ),
             ),
           ],

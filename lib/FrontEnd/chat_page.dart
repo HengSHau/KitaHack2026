@@ -11,10 +11,8 @@ class ChatSelectionPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Unique Key: Your Email
     final String myEmail = FirebaseAuth.instance.currentUser?.email ?? "";
 
-    // 升级为 DefaultTabController 来实现顶部切换 Tabs
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -39,10 +37,8 @@ class ChatSelectionPage extends StatelessWidget {
         ),
         body: TabBarView(
           children: [
-            // --- TAB 1: 现有的私聊逻辑 ---
             _buildPrivateChats(myEmail),
 
-            // --- TAB 2: 新增的群聊逻辑 ---
             _buildGroupChats(myEmail),
           ],
         ),
@@ -50,7 +46,6 @@ class ChatSelectionPage extends StatelessWidget {
     );
   }
 
-  // 私聊列表构建
   Widget _buildPrivateChats(String myEmail) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance.collection('users').snapshots(),
@@ -96,10 +91,8 @@ class ChatSelectionPage extends StatelessWidget {
     );
   }
 
-  // 群聊列表构建
   Widget _buildGroupChats(String myEmail) {
     return StreamBuilder<QuerySnapshot>(
-      // 核心逻辑：只查询 participants 列表里包含我自己 Email 的群组！
       stream: FirebaseFirestore.instance
           .collection('Groups')
           .where('participants', arrayContains: myEmail)
@@ -194,7 +187,6 @@ class ChatContactTile extends StatelessWidget {
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          // If previews are blank, check browser console (F12) for index link
           print("Preview Error: ${snapshot.error}");
           return const SizedBox.shrink(); 
         }
@@ -213,7 +205,6 @@ class ChatContactTile extends StatelessWidget {
           if (relevantDocs.isNotEmpty) {
             final data = relevantDocs.first.data() as Map<String, dynamic>;
             lastMessage = data['text'] ?? "";
-            // BOLD LOGIC: Sent to me and isRead is false
             isUnread = data['receiver'] == myEmail && (data['isRead'] == false);
           } else {
             lastMessage = "Start a conversation"; 
@@ -294,7 +285,6 @@ class _ChatMessagingPageState extends State<ChatMessagingPage> {
 
     _messageController.clear();
 
-    // Data Bridge: Saving participants and isRead
     await FirebaseFirestore.instance.collection('Chat').add({
       'text': text,
       'sender': myEmail,

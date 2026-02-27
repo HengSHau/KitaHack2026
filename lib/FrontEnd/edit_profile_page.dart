@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // NECESSARY
-import 'package:firebase_auth/firebase_auth.dart';    // NECESSARY
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 const Color kThemeGreen = Color(0xFF2ECC71); 
 
@@ -12,22 +12,19 @@ class EditProfilePage extends StatefulWidget {
 }
 
 class _EditProfilePageState extends State<EditProfilePage> {
-  // NECESSARY: Removed hardcoded text to allow loading from database
   final TextEditingController usernameController = TextEditingController();
   String? originalUsername;
   String? selectedPersonality;
-  bool _isLoading = false; // NECESSARY for async UX
+  bool _isLoading = false;
 
   final List<String> personalityOptions = ["Introverted", "Extroverted", "Ambivert"];
 
-  // NECESSARY: Added initState to load real data
   @override
   void initState() {
     super.initState();
     _loadCurrentUserData();
   }
 
-  // NECESSARY: Fetch logic
   Future<void> _loadCurrentUserData() async {
     String? email = FirebaseAuth.instance.currentUser?.email;
     if (email != null) {
@@ -44,7 +41,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
-  // NECESSARY: Save logic
   Future<void> _saveProfile() async {
     String enteredName=usernameController.text.trim();
 
@@ -123,7 +119,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
         foregroundColor: Colors.black,
         elevation: 0.5,
       ),
-      // NECESSARY: Wrap body to show loading spinner
       body: _isLoading 
           ? const Center(child: CircularProgressIndicator(color: kThemeGreen))
           : SingleChildScrollView(
@@ -204,7 +199,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(
-                      onPressed: _saveProfile, // NECESSARY: Linked to Firestore
+                      onPressed: _saveProfile,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: kThemeGreen,
                         foregroundColor: Colors.white,

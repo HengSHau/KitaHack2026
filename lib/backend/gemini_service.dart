@@ -38,12 +38,12 @@ class GeminiMatchService {
         print("Value Returned: $text"); 
         return text.toLowerCase().contains('true');
       } else {
-        print("🟨 API 报错: ${response.statusCode} - ${response.body}");
-        return true; // 演示保底
+        print("Error: ${response.statusCode} - ${response.body}");
+        return false;
       }
     } catch (e) {
-      print("🟨 网络请求失败: $e");
-      return true; // 演示保底
+      print("Error: $e");
+      return false;
     }
   }
 

@@ -423,7 +423,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
                     // 顺便把文字改成更符合大厅逻辑的文案
-                    child: const Text("View Available Rides", style: TextStyle(fontWeight: FontWeight.w600)),
+                    child: const Text("Match in Advance", style: TextStyle(fontWeight: FontWeight.w600)),
                   ),
                 ),
               ],
