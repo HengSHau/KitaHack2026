@@ -18,6 +18,26 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
+class RideRequest {
+  final String id;
+  final String name;
+  final String role;
+  final String start;
+  final String destination;
+  final int seats;
+  final String personality;
+
+  RideRequest({
+    required this.id,
+    required this.name,
+    required this.role,
+    required this.start,
+    required this.destination,
+    required this.seats,
+    required this.personality,
+  });
+}
+
 class _HomePageState extends State<HomePage> {
   bool _isDriver = false;
   int _maxSeats = 1;
@@ -150,11 +170,32 @@ class _HomePageState extends State<HomePage> {
                   child: ElevatedButton(
                     onPressed: () {
                       String destination = _destinationController.text.trim();
+                      
+                      if (destination.isEmpty) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text("Please enter a destination first!")),
+                        );
+                        return;
+                      }
+
+                      // Get firebase data
+                      final currentUserData = RideRequest(
+                        id: FirebaseAuth.instance.currentUser?.uid ?? "guest_id",
+                        name: _currentUsername,
+                        role: _isDriver ? "driver" : "passenger",
+                        start: "Current Location", // 演示时可以写死，或替换为真实反编译的地址
+                        destination: destination,
+                        seats: _isDriver ? _maxSeats : 1,
+                        personality: "Introverted", // 暂时代替，以后你可以在设置页加一个性格选择器
+                      );
+
                       Navigator.pop(context);
+
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => MatchingPage(destination: destination),
+                          builder: (context) => MatchingPage(currentUser: currentUserData), 
                         ),
                       );
                     },
