@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart'; // 🚀 新增：引入 Firestore
-import 'package:geolocator/geolocator.dart';
 import 'match_success_page.dart';
 import '../backend/gemini_service.dart';
 import 'home_page.dart';
@@ -37,41 +36,30 @@ class _MatchingPageState extends State<MatchingPage> {
       QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('ride_requests').get();
 
       List<RideRequest> fetchedRequests = [];
-  
+
       for (var doc in snapshot.docs) {
         var data = doc.data() as Map<String, dynamic>;
 
         // 过滤掉自己的请求，只匹配别人
         if (data['email'] == widget.currentUser.email) continue;
 
-        // Get destination address
-        double otherLat = (data['destLat'] ?? data['dest_lat'] ?? 0.0).toDouble();
-        double otherLng = (data['destLng'] ?? data['dest_lng'] ?? 0.0).toDouble();
-        
-        // Get personal address
-        double myLat = widget.currentUser.destLat; 
-        double myLng = widget.currentUser.destLng;
+        double otherLat = (data['dest_lat'] ?? 0.0).toDouble();
+        double otherLng = (data['dest_lng'] ?? 0.0).toDouble();    
 
-        // distance between user and destination
-        double distanceInMeters = Geolocator.distanceBetween(myLat, myLng, otherLat, otherLng);
-        
-        if (distanceInMeters < 5000000000000000) {
         fetchedRequests.add(
           RideRequest(
             email: data['email'] ?? "",
             name: data['name'] ?? "Unknown",
             role: data['role'] ?? "passenger",
             start: data['start'] ?? "",
-            destination: data['destination'],
+            destination: data['destination'] ?? "",
             seats: data['seats'] ?? 1,
             personality: data['personality'] ?? "Introverted",
             destLat: otherLat, 
             destLng: otherLng,
           )
         );
-        }
       }
-      
 
       // 将抓取到的真实数据更新到数据池
       if (mounted) {
@@ -174,26 +162,12 @@ class _MatchingPageState extends State<MatchingPage> {
       String passStart = currentUser.role == 'passenger' ? currentUser.start : candidate.start;
       String passEnd = currentUser.role == 'passenger' ? currentUser.destination : candidate.destination;
 
-      double physicalDist = Geolocator.distanceBetween(
-      currentUser.destLat, currentUser.destLng, 
-      candidate.destLat, candidate.destLng
-    );
-
-    bool isRouteMatch = false;
-
-    if (physicalDist < 100000000000000) {
-
-      isRouteMatch = true; 
-
-    } else {
-      isRouteMatch = await aiService.checkMatch(
+      bool isRouteMatch = await aiService.checkMatch(
         driverStart: driverStart,
         driverEnd: driverEnd,
         passengerStart: passStart,
         passengerEnd: passEnd,
       );
-    }
-
 
       if (isRouteMatch) {
         if (bestMatch == null) {

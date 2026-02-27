@@ -35,7 +35,11 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
       ),
       
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('scheduled_rides').snapshots(),
+        // read lat and lag to get the schedule
+        stream: FirebaseFirestore.instance.collection('scheduled_rides')
+            .where('destLat', isGreaterThanOrEqualTo: widget.currentUser.destLat - 0.005)
+            .where('destLat', isLessThanOrEqualTo: widget.currentUser.destLat + 0.005)
+            .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator(color: kThemeGreen));
@@ -52,9 +56,17 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
 
           final validDocs = snapshot.data!.docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
+
+            if (data['destLat'] == null || data['destLng'] == null) {
             final String dbDest = (data['destination'] ?? '').toString().trim().toLowerCase();
             final String targetDest = widget.currentUser.destination.trim().toLowerCase();
             return dbDest.contains(targetDest) || targetDest.contains(dbDest);
+          }
+
+          double dbLng = (data['destLng'] as num).toDouble();
+
+            double targetLng = widget.currentUser.destLng;
+            return (dbLng >= targetLng - 0.005 && dbLng <= targetLng + 0.005);
           }).toList();
 
           if (validDocs.isEmpty) {
