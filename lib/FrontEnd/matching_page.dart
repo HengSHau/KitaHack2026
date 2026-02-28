@@ -44,6 +44,9 @@ class _MatchingPageState extends State<MatchingPage> {
         // 过滤掉自己的请求，只匹配别人
         if (data['email'] == widget.currentUser.email) continue;
 
+        double otherLat = (data['dest_lat'] ?? 0.0).toDouble();
+        double otherLng = (data['dest_lng'] ?? 0.0).toDouble();    
+
         fetchedRequests.add(
           RideRequest(
             email: data['email'] ?? "",
@@ -53,6 +56,8 @@ class _MatchingPageState extends State<MatchingPage> {
             destination: data['destination'] ?? "",
             seats: data['seats'] ?? 1,
             personality: data['personality'] ?? "Introverted",
+            destLat: otherLat, 
+            destLng: otherLng,
           )
         );
       }

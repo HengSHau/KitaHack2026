@@ -133,10 +133,15 @@ class ChatSelectionPage extends StatelessWidget {
               ),
               title: Row(
                 children: [
-                  Text(groupName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(width: 8),
-                  Text("(${participants.length})", style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                ],
+                  Expanded(
+                    child:Text(
+                      groupName,
+                      style:const TextStyle(fontWeight:FontWeight.bold),
+                      overflow:TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width:8),
+                    Text("(${participants.length})", style: const TextStyle(color: Colors.grey, fontSize: 12)),                ],
               ),
               subtitle: Text(
                 lastMessage,

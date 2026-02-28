@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'match_in_advance_page.dart';
 import 'home_page.dart'; 
+import 'chat_page.dart'; // 🚀 必须导入聊天页面，以便跳转
 
 const Color kThemeGreen = Color(0xFF2ECC71);
 
@@ -34,7 +35,11 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
       ),
       
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('scheduled_rides').snapshots(),
+        // read lat and lag to get the schedule
+        stream: FirebaseFirestore.instance.collection('scheduled_rides')
+            .where('destLat', isGreaterThanOrEqualTo: widget.currentUser.destLat - 0.005)
+            .where('destLat', isLessThanOrEqualTo: widget.currentUser.destLat + 0.005)
+            .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator(color: kThemeGreen));
@@ -51,9 +56,17 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
 
           final validDocs = snapshot.data!.docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
+
+            if (data['destLat'] == null || data['destLng'] == null) {
             final String dbDest = (data['destination'] ?? '').toString().trim().toLowerCase();
             final String targetDest = widget.currentUser.destination.trim().toLowerCase();
             return dbDest.contains(targetDest) || targetDest.contains(dbDest);
+          }
+
+          double dbLng = (data['destLng'] as num).toDouble();
+
+            double targetLng = widget.currentUser.destLng;
+            return (dbLng >= targetLng - 0.005 && dbLng <= targetLng + 0.005);
           }).toList();
 
           if (validDocs.isEmpty) {
@@ -200,19 +213,87 @@ class _AvailableRidesPageState extends State<AvailableRidesPage> {
             SizedBox(
               width: double.infinity, height: 45,
               child: ElevatedButton(
+                // 🚀 这里是核心改动区域
                 onPressed: (isMyOwnRide || hasJoined || isFull) ? null : () async {
+                  
+                  // 1. 弹出 Loading 圈，防止用户狂点
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (context) => const Center(child: CircularProgressIndicator(color: kThemeGreen)),
+                  );
+
                   try {
+                    // 2. 将用户加入订单的 joinedUsers
                     await FirebaseFirestore.instance.collection('scheduled_rides').doc(docId).update({
                       'joinedUsers': FieldValue.arrayUnion([currentUserEmail])
                     });
                     
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("Successfully joined ${data['name']}'s ride! 🌍"), backgroundColor: Colors.green),
-                      );
+                    // 3. 查找该订单对应的群聊 (通过 rideId)
+                    QuerySnapshot groupQuery = await FirebaseFirestore.instance
+                        .collection('Groups')
+                        .where('rideId', isEqualTo: docId)
+                        .limit(1)
+                        .get();
+
+                    if (groupQuery.docs.isNotEmpty) {
+                      DocumentSnapshot groupDoc = groupQuery.docs.first;
+                      String groupId = groupDoc.id;
+                      String groupName = groupDoc['groupName'] ?? "Carpool Group";
+
+                      // 4. 将用户加入群聊的 participants
+                      await FirebaseFirestore.instance.collection('Groups').doc(groupId).update({
+                        'participants': FieldValue.arrayUnion([currentUserEmail])
+                      });
+
+                      if (context.mounted) {
+                        Navigator.pop(context); // 关掉 Loading
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Successfully joined ${data['name']}'s ride! 🌍"), backgroundColor: Colors.green),
+                        );
+                        
+                        // 5. 跳转到聊天室！
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => GroupMessagingPage(
+                              groupId: groupId,
+                              groupName: groupName,
+                            ),
+                          ),
+                        );
+                      }
+                    } else {
+                      String fallbackGroupName = "Carpool to ${data['destination']}_${data['date']}_${data['time']}";
+                      DocumentReference newGroupRef = await FirebaseFirestore.instance.collection('Groups').add({
+                        'groupName': "Carpool to ${data['destination']}",
+                        'participants': [data['email'], currentUserEmail], 
+                        'lastMessage': "New member joined!",
+                        'timestamp': FieldValue.serverTimestamp(),
+                        'rideId': docId,
+                      });
+
+                      if (context.mounted) {
+                        Navigator.pop(context); 
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => GroupMessagingPage(
+                              groupId: newGroupRef.id,
+                              groupName: fallbackGroupName,
+                            ),
+                          ),
+                        );
+                      }
                     }
                   } catch (e) {
-                    print("Join error: $e");
+                    if (context.mounted) {
+                      Navigator.pop(context); // 关掉 Loading
+                      print("Join error: $e");
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("Error joining ride: $e"), backgroundColor: Colors.red),
+                      );
+                    }
                   }
                 },
                 style: ElevatedButton.styleFrom(
