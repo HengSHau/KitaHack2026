@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'match_success_page.dart';
 import '../backend/gemini_service.dart';
 import 'home_page.dart';
+import 'package:kitahack2026/backend/notification_service.dart';
 
 const Color kThemeGreen = Color(0xFF2ECC71);
 
@@ -282,6 +283,25 @@ class _MatchingPageState extends State<MatchingPage> {
           time: realTime,
         )
       )
+    );
+
+    NotificationService.showNotification(
+      id: 999,
+      title: "Match Successful！🚗",
+      body: "The system has matched you with ${match.name}. Click to view details.",
+      senderName: "System",
+      senderEmail: "system@kitahack.com",
+      type: "match",
+      payload: {
+        "type": "match",
+        "matchName": match.name,
+        "matchPersonality": match.personality,
+        "matchEmail": match.email,
+        "origin": "APU", 
+        "destination": widget.currentUser.destination,
+        "date": realDate,
+        "time": realTime,
+      },
     );
   }
 }

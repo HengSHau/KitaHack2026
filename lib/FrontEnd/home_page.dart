@@ -10,6 +10,7 @@ import 'package:geocoding/geocoding.dart';
 import 'available_rides_page.dart';
 import 'settings_page.dart';
 import 'chat_page.dart';
+import 'package:kitahack2026/backend/notification_service.dart';
 import 'matching_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -66,9 +67,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     _loadName();
-    Future.delayed(const Duration(seconds: 1), () {
-      _startLocationTracking();
-    });
+    _startLocationTracking();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+    _initNotificationSetting(); 
+    AppNotificationListener().startListening();
+  });
+  
     Future.delayed(const Duration(seconds: 1), () {
       _nearlyOtherUsers();
     });
@@ -213,6 +217,17 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _loadName();
+  }
+
+  void _initNotificationSetting() async {
+    bool granted = await NotificationService.requestNotificationPermission(context);
+    
+    if (granted) {
+      print("Notification permission has been obtained");
+      AppNotificationListener().startListening();
+    } else {
+      print("The user denied notification permissions.");
+    }
   }
 
   void _startLocationTracking() async {
@@ -374,9 +389,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                           'destLng': destinationp?.longitude ?? 0.0,
                           'timestamp': FieldValue.serverTimestamp(),
                         });
-                        print("✅ Successfully uploaded ride request: $actualStartLocation to $destination");
+                        print("Successfully uploaded ride request: $actualStartLocation to $destination");
                       } catch (e) {
-                        print("❌ Failed to upload ride request: $e");
+                        print("Failed to upload ride request: $e");
                       }
 
                       Navigator.pop(context);
