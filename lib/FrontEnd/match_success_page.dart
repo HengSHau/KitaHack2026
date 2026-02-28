@@ -1,20 +1,93 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'chat_page.dart'; 
+import '../backend/chat_backend.dart';
 
 const Color kThemeGreen = Color(0xFF2ECC71);
 
-class MatchSuccessPage extends StatelessWidget {
-  const MatchSuccessPage({super.key});
+class MatchSuccessPage extends StatefulWidget {
+  final List<Map<String, dynamic>> matchedUsers;
+  final String origin;
+  final String destination;
+  final String date;
+  final String time;
+
+  const MatchSuccessPage({
+    super.key,
+    required this.matchedUsers,
+    required this.origin,
+    required this.destination,
+    required this.date,
+    required this.time,
+  });
+
+
+  @override
+  State<MatchSuccessPage> createState() => _MatchSuccessPageState();
+}
+
+class _MatchSuccessPageState extends State<MatchSuccessPage> {
+  bool _isLoading = false;
+  final ChatBackend _chatBackend = ChatBackend();
+
+
+  void _handleChatNavigation() async {
+    setState(() => _isLoading = true);
+    
+    bool isGroup = widget.matchedUsers.length > 1;
+
+    try {
+      if (isGroup) {
+        // Safely extract emails
+        List<String> passengerEmails = widget.matchedUsers.map((u) => (u['email'] ?? "").toString()).toList();
+        
+        String groupName = "${widget.origin}_${widget.destination}_${widget.date}_${widget.time}";
+        String newGroupId = await _chatBackend.createGroupChat(groupName, passengerEmails);
+
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => GroupMessagingPage( 
+                groupId: newGroupId,
+                groupName: groupName,
+              ),
+            ),
+          );
+        }
+      } else {
+        // Safely extract 1-on-1 details
+        String contactEmail = widget.matchedUsers[0]['email'] ?? "Unknown";
+        String contactName = widget.matchedUsers[0]['name'] ?? "Passenger";
+        
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ChatMessagingPage(
+                userName: contactName,
+                userEmail: contactEmail,
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Error creating chat: $e"), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final List<Map<String, String>> matchedUsers = [
-      {"name": "Sarah", "personality": "Extroverted"},
-      {"name": "Jason", "personality": "Introverted"},
-      {"name": "Mei", "personality": "Ambivert"},
-    ];
-
-    bool isGroup = matchedUsers.length > 1;
+    bool isGroup = widget.matchedUsers.length > 1;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -32,13 +105,12 @@ class MatchSuccessPage extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                "You are matched with ${matchedUsers.length} passengers\nheading to the same destination.",
+                "You are matched with ${widget.matchedUsers.length} passengers\nheading to the same destination.",
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey[600], fontSize: 14),
               ),
               const SizedBox(height: 32),
 
-              // Partner(s) matched
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
@@ -53,36 +125,41 @@ class MatchSuccessPage extends StatelessWidget {
                     const Text("Ride Members", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                     const SizedBox(height: 15),
                     
-                    ...matchedUsers.map((user) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12.0),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            backgroundColor: kThemeGreen.withOpacity(0.1),
-                            child: Text(user['name']![0], style: const TextStyle(color: kThemeGreen, fontWeight: FontWeight.bold)),
-                          ),
-                          const SizedBox(width: 15),
-                          Expanded(
-                            child: Text(user['name']!, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-                          ),
-                          // Personality
-                          _buildPersonalityTag(user['personality']!),
-                        ],
-                      ),
-                    )).toList(),
+                    ...widget.matchedUsers.map((user) {
+                      String name = user['name'] ?? "Passenger";
+                      String personality = user['personality'] ?? "Unknown";
+                      String initial = name.isNotEmpty ? name[0].toUpperCase() : "P";
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12.0),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: kThemeGreen.withOpacity(0.1),
+                              child: Text(initial, style: const TextStyle(color: kThemeGreen, fontWeight: FontWeight.bold)),
+                            ),
+                            const SizedBox(width: 15),
+                            Expanded(
+                              child: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                            ),
+                            _buildPersonalityTag(personality),
+                          ],
+                        ),
+                      );
+                    }).toList(),
                     
                     const Divider(height: 30),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        if (matchedUsers.length < 4) ...[
-                          Icon(Icons.info_outline, size: 16, color: Colors.orange),
-                          SizedBox(width: 8),
+                        if (widget.matchedUsers.length < 4) ...[
+                          const Icon(Icons.info_outline, size: 16, color: Colors.orange),
+                          const SizedBox(width: 8),
                         ],
                         Text(
-                          "${matchedUsers.length}/4 Seats Filled",
+                          "${widget.matchedUsers.length}/4 Seats Filled",
                           style: TextStyle(
-                            color: matchedUsers.length == 4 ? Colors.green : Colors.orange,
+                            color: widget.matchedUsers.length == 4 ? Colors.green : Colors.orange,
                             fontSize: 12,
                             fontWeight: FontWeight.bold)),
                       ],
@@ -108,25 +185,22 @@ class MatchSuccessPage extends StatelessWidget {
                   const SizedBox(width: 16),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
-                        // Navigator.push(
-                        //   context,
-                        //   MaterialPageRoute(
-                        //     builder: (context) => ChatMessagingPage(
-                        //       userName: isGroup ? "Ride Group (${matchedUsers.length + 1})" : matchedUsers[0]['name']!,
-                        //     ),
-                        //   ),
-                        // );
-                      },
+                      onPressed: _isLoading ? null : _handleChatNavigation, 
                       style: ElevatedButton.styleFrom(
                         backgroundColor: kThemeGreen,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: Text(
-                        isGroup ? "Join Group Chat" : "Chat Now",
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
+                      child: _isLoading 
+                        ? const SizedBox(
+                            height: 20, 
+                            width: 20, 
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                          )
+                        : Text(
+                            isGroup ? "Join Group Chat" : "Chat Now",
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
                     ),
                   ),
                 ],

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'custom_text_field.dart';
 import 'package:kitahack2026/backend/register_backend.dart';
+import 'home_page.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -140,8 +141,15 @@ class _RegisterPageState extends State<RegisterPage> {
                               password: password.text,
                               personality: selectedPersonality!,
                             );
-                            // complete 
-                            if (mounted) Navigator.pushReplacementNamed(context, '/home');
+                            
+                            if (mounted) {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const HomePage(),
+                                ),
+                              );
+                            }
                           } catch (e) {
                             // failed
                             if (mounted) {

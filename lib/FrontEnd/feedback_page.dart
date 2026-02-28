@@ -13,10 +13,8 @@ class FeedbackPage extends StatefulWidget {
 
 class _FeedbackPageState extends State<FeedbackPage> {
   int _rating = 0;
-  // Added controller to grab the text from the TextField
   final TextEditingController _commentController = TextEditingController();
 
-  // Added function to handle the Firestore submission
   Future<void> _submitFeedback() async {
     if (_rating == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -28,7 +26,6 @@ class _FeedbackPageState extends State<FeedbackPage> {
     try {
       final String? userEmail = FirebaseAuth.instance.currentUser?.email;
 
-      // Saving data to 'Feedback' collection
       await FirebaseFirestore.instance.collection('Feedback').add({
         'email': userEmail ?? 'Guest',
         'rating': _rating,
@@ -36,7 +33,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
         'timestamp': FieldValue.serverTimestamp(),
       });
 
-      if (!mounted) return; // Safety check for async gaps
+      if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Thank you for your feedback!'), backgroundColor: kThemeGreen),
@@ -90,7 +87,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
             const Text('Tell us more', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black54)),
             const SizedBox(height: 8),
             TextField(
-              controller: _commentController, // Linked the controller here
+              controller: _commentController,
               maxLines: 5,
               decoration: InputDecoration(
                 hintText: 'Share your thoughts or report an issue...',
@@ -109,7 +106,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
               width: double.infinity,
               height: 54,
               child: ElevatedButton(
-                onPressed: _submitFeedback, // Linked the new submission function
+                onPressed: _submitFeedback,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: kThemeGreen,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

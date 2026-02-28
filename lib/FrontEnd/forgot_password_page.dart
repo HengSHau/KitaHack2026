@@ -77,7 +77,6 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>{
                           }
 
                           try {
-                            // This triggers the Firebase template you saw in your console
                             await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
     
                             if (mounted) {
