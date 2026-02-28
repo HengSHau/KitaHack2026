@@ -96,7 +96,7 @@ class UserService {
   };
 }
 
-  // Used to get username by login accout
+  // Used to get username by login account
   Future<String> getCurrentUsername() async {
     try {
       User? user = _auth.currentUser;

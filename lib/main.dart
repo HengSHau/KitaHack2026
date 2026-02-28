@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart'; // Ensure core is imported
-import 'firebase_options.dart'; // 1. IMPORT your options file
+import 'firebase_options.dart';
 import 'FrontEnd/login_page.dart';
 import '../backend/notification_service.dart';
 
