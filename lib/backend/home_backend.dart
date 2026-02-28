@@ -142,7 +142,7 @@ class UserService {
     ).listen((Position position) {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        // locatio write into firabase
+        // location write into firabase
         FirebaseFirestore.instance.collection('users').doc(user.uid).update({
           'latitude': position.latitude,
           'longitude': position.longitude,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'custom_text_field.dart';
 import 'package:kitahack2026/backend/register_backend.dart';
-import 'home_page.dart'; // 🚀 1. 导入你的主页
+import 'home_page.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -135,7 +135,6 @@ class _RegisterPageState extends State<RegisterPage> {
                           }
 
                           try {
-                            // 调用你后端的注册函数
                             await registerUser(
                               username: username.text,
                               email: email.text,
@@ -143,7 +142,6 @@ class _RegisterPageState extends State<RegisterPage> {
                               personality: selectedPersonality!,
                             );
                             
-                            // 🚀 2. 核心修改：注册成功后直接替换页面跳转到 HomePage
                             if (mounted) {
                               Navigator.pushReplacement(
                                 context,

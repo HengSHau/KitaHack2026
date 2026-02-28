@@ -301,7 +301,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         return;
                       }
 
-                      // 1. 显示加载圈
                       showDialog(
                         context: context,
                         barrierDismissible: false,
@@ -310,14 +309,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         ),
                       );
 
-                      // 🚀 2. 获取真实地理位置 (Geocoding)
                       String actualStartLocation = "Unknown Location";
                       if (currentp != null) {
                         try {
                           List<Placemark> placemarks = await placemarkFromCoordinates(currentp!.latitude, currentp!.longitude);
                           if (placemarks.isNotEmpty) {
                             Placemark place = placemarks.first;
-                            // 如果有街道名就用街道名，否则用大区域名
                             String street = place.street ?? place.name ?? "";
                             String area = place.locality ?? place.subLocality ?? "";
                             actualStartLocation = street.isNotEmpty && area.isNotEmpty ? "$street, $area" : (street.isNotEmpty ? street : area);
@@ -331,7 +328,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         }
                       }
 
-                      // 3. 获取 Firebase 中的当前用户信息
+                      // Read firebase user details
                       String email = FirebaseAuth.instance.currentUser?.email ?? "example@gmail.com";
                       String personality = "Introverted";
                       String name = _currentUsername;
@@ -350,12 +347,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         }
                       }
 
-                      // 4. 组装发给 MatchingPage 的数据
+                      // Send data to MatchingPage
                       final currentUserData = RideRequest(
                         email: email,
                         name: name,
                         role: _isDriver ? "driver" : "passenger",
-                        start: actualStartLocation, // 🚀 传入真实的起点地址！
+                        start: actualStartLocation,
                         destination: destination,
                         seats: _isDriver ? _maxSeats : 1,
                         personality: personality,
@@ -363,13 +360,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         destLng: destinationp?.longitude ?? 0.0,
                       );
 
-                      // 5. 上传到 Firebase
+                      // Upload to Firebase
                       try {
                         await FirebaseFirestore.instance.collection('ride_requests').doc(email).set({
                           'email': email,
                           'name': name,
                           'role': _isDriver ? "driver" : "passenger",
-                          'start': actualStartLocation, // 🚀 存入真实的起点地址！
+                          'start': actualStartLocation,
                           'destination': destination,
                           'seats': _isDriver ? _maxSeats : 1,
                           'personality': personality,
@@ -382,8 +379,8 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         print("❌ Failed to upload ride request: $e");
                       }
 
-                      Navigator.pop(context); // 关 Loading 圈
-                      Navigator.pop(context); // 关 Match 对话框
+                      Navigator.pop(context);
+                      Navigator.pop(context);
 
                       Navigator.push(
                         context,
@@ -406,7 +403,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                   height: 45,
                   child: ElevatedButton(
                     onPressed: () async {
-                      // 1. 拦截：必须先填目的地才能进大厅
                       String destination = _destinationController.text.trim();
                       if (destination.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -415,36 +411,32 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
                         return;
                       }
 
-                      // 2. 简单组装大厅需要的数据包裹 (目的地最重要)
                       String email = FirebaseAuth.instance.currentUser?.email ?? "example@gmail.com";
                       final currentUserData = RideRequest(
                         email: email,
                         name: _currentUsername,
                         role: _isDriver ? "driver" : "passenger",
                         start: "Current Location", 
-                        destination: destination, // 🎯 核心：把目的地带过去！
+                        destination: destination,
                         seats: _isDriver ? _maxSeats : 1,
                         personality: "Introverted", 
                         destLat: destinationp?.latitude ?? 0.0, 
                         destLng: destinationp?.longitude ?? 0.0,
                       );
 
-                      // 3. 关弹窗并跳转
                       Navigator.pop(context); 
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          // ✅ 传入 currentUserData，消除红线！
                           builder: (context) => AvailableRidesPage(currentUser: currentUserData)
                         ),
                       );
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFAAAAAA), // 保留你原本的灰色设计
+                      backgroundColor: const Color(0xFFAAAAAA),
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    // 顺便把文字改成更符合大厅逻辑的文案
                     child: const Text("Match in Advance", style: TextStyle(fontWeight: FontWeight.w600)),
                   ),
                 ),
@@ -657,30 +649,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: 'Chat'),
           BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
         ],
-      ),
-    );
-  }
-
-  Widget _buildLocationChip(String fullLocationName) {
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _destinationController.text = fullLocationName;
-        });
-        _handleSearch(fullLocationName);
-      },
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 95),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          fullLocationName,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 12),
-        ),  
       ),
     );
   }

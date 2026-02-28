@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Ensure this is imported for the User type
+import 'package:firebase_auth/firebase_auth.dart';
 import 'custom_text_field.dart';
 import 'register_page.dart';
 import 'forgot_password_page.dart';
@@ -14,11 +14,9 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  // Controllers to capture the text from the UI
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  // Instance of your backend class
   final LoginBackend _loginService = LoginBackend();
 
   // Clean up memory when the user leaves the page
@@ -118,7 +116,7 @@ class _LoginPageState extends State<LoginPage> {
                           String email = _emailController.text.trim();
                           String password = _passwordController.text.trim();
 
-                          // 1. Basic Validation
+                          // Validation
                           if (email.isEmpty || password.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text("Please fill in all fields")),
@@ -126,10 +124,8 @@ class _LoginPageState extends State<LoginPage> {
                             return;
                           }
 
-                          // 2. Call Backend to attempt login
                           User? user = await _loginService.signInWithEmail(email, password);
 
-                          // 3. Handle Login Result
                           if (user != null) {
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(

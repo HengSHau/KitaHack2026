@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class GeminiMatchService {
-  final String _apiKey = 'AIzaSyCq2QdmSEjUN96THcxZawdRNMpsA2AYkns';
+  final String _apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
 
   Future<bool> checkMatch({
     required String driverStart,
@@ -46,6 +47,4 @@ class GeminiMatchService {
       return false;
     }
   }
-
-  
 }

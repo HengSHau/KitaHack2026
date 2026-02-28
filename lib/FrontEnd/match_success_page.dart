@@ -125,7 +125,6 @@ class _MatchSuccessPageState extends State<MatchSuccessPage> {
                     const Text("Ride Members", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
                     const SizedBox(height: 15),
                     
-                    // FIXED: Safe extraction of data to prevent crashes
                     ...widget.matchedUsers.map((user) {
                       String name = user['name'] ?? "Passenger";
                       String personality = user['personality'] ?? "Unknown";

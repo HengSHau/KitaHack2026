@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart'; // 🚀 新增：引入 Firestore
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'match_success_page.dart';
 import '../backend/gemini_service.dart';
 import 'home_page.dart';
@@ -18,21 +18,16 @@ class MatchingPage extends StatefulWidget {
 class _MatchingPageState extends State<MatchingPage> {
   final Set<String> _rejectedEmails = {};
 
-  // 🚀 1. 把假数据删掉，变成一个空的真实数据池
   List<RideRequest> databasePool = [];
 
   @override
   void initState() {
     super.initState();
-    // 🚀 2. 页面一加载，就去 Firebase 抓取真实数据！
     _fetchRealDataAndMatch();
   }
 
-  // 🚀 3. 新增的核心功能：从 Firebase 拉取当前所有活跃的拼车请求
   Future<void> _fetchRealDataAndMatch() async {
     try {
-      // 假设你的 Firebase 里有一个存拼车请求的 Collection 叫 'ride_requests'
-      // (如果你存在别的地方，比如 'users' 里，把这里的名字换一下即可)
       QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('ride_requests').get();
 
       List<RideRequest> fetchedRequests = [];
@@ -40,7 +35,7 @@ class _MatchingPageState extends State<MatchingPage> {
       for (var doc in snapshot.docs) {
         var data = doc.data() as Map<String, dynamic>;
 
-        // 过滤掉自己的请求，只匹配别人
+        // Filter self requests
         if (data['email'] == widget.currentUser.email) continue;
 
         double otherLat = (data['dest_lat'] ?? 0.0).toDouble();
@@ -61,20 +56,18 @@ class _MatchingPageState extends State<MatchingPage> {
         );
       }
 
-      // 将抓取到的真实数据更新到数据池
       if (mounted) {
         setState(() {
           databasePool = fetchedRequests;
         });
       }
 
-      // 🚀 数据库抓取完毕，马上把真实数据交给 AI 进行匹配！
       findBestMatch(widget.currentUser, databasePool);
 
     } catch (e) {
       print("Error fetching ride requests from Firebase: $e");
       if (mounted) {
-        _showNoMatchFoundDialog(); // 如果数据库报错，直接提示找不到匹配
+        _showNoMatchFoundDialog();
       }
     }
   }
@@ -140,7 +133,6 @@ class _MatchingPageState extends State<MatchingPage> {
   }
 
   Future<void> findBestMatch(RideRequest currentUser, List<RideRequest> pool) async {
-    // 如果 Firebase 里一个人都没有，直接判定找不到
     if (pool.isEmpty) {
       await Future.delayed(const Duration(seconds: 2));
       if (mounted) _showNoMatchFoundDialog();
@@ -183,7 +175,7 @@ class _MatchingPageState extends State<MatchingPage> {
       }
     }
 
-    await Future.delayed(const Duration(seconds: 1)); // 留一点思考动画时间
+    await Future.delayed(const Duration(seconds: 1));
     if (!mounted) return;
 
     if (bestMatch != null) {

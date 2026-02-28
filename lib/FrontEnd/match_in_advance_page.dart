@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:kitahack2026/backend/match_in_advance_backend.dart.dart'; // 保留你原本的 backend 路径
+import 'package:kitahack2026/backend/match_in_advance_backend.dart.dart';
 import 'home_page.dart'; 
-import 'chat_page.dart'; // 🚀 必须导入，为了能跳转到 GroupMessagingPage
+import 'chat_page.dart';
 
 class MatchInAdvancePage extends StatefulWidget {
   final RideRequest currentUser;
@@ -121,7 +121,7 @@ class _MatchInAdvancePageState extends State<MatchInAdvancePage> {
                       label: "Time",
                       hint: "Select Time",
                       icon: Icons.access_time,
-                      value: _selectedTime?.format(context), // 🚀 修复了蓝线警告
+                      value: _selectedTime?.format(context),
                       onTap: () => _pickTime(context),
                     ),
                     const SizedBox(height: 30),
@@ -138,7 +138,6 @@ class _MatchInAdvancePageState extends State<MatchInAdvancePage> {
                           showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator(color: Color(0xFF2ECC71))));
 
                           try {
-                            // 1. 调用你原本的 backend API
                             await _advanceDate.createadvancedata(
                               datetime: _selectedDate!,
                               hour: _selectedTime!.hour.toDouble(),
@@ -148,7 +147,6 @@ class _MatchInAdvancePageState extends State<MatchInAdvancePage> {
                             final String dateStr = "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}";
                             final String timeStr = _selectedTime!.format(context);
 
-                            // 2. 将订单信息写入 Firebase
                             DocumentReference rideRef = await FirebaseFirestore.instance.collection('scheduled_rides').add({
                               'email': widget.currentUser.email,
                               'name': widget.currentUser.name,
@@ -164,30 +162,28 @@ class _MatchInAdvancePageState extends State<MatchInAdvancePage> {
                               'createdAt': FieldValue.serverTimestamp(),
                             });
 
-                            // 🚀 3. 【核心新增】在 Firebase 'Groups' 创建专属群聊
                             List<String> mergedEmails = [widget.currentUser.email]; 
                             String groupTitle = "Carpool to ${widget.currentUser.destination}_${dateStr}_${timeStr}";
 
                             DocumentReference groupRef = await FirebaseFirestore.instance.collection('Groups').add({
                               'groupName': groupTitle,
-                              'participants': mergedEmails, // 把参与者加进群
+                              'participants': mergedEmails,
                               'lastMessage': "Carpool group created! Say Hi 👋",
                               'timestamp': FieldValue.serverTimestamp(),
-                              'rideId': rideRef.id, // 绑定订单ID
+                              'rideId': rideRef.id,
                             });
 
                             if (mounted) {
-                              Navigator.pop(context); // 关掉 Loading 圈
+                              Navigator.pop(context);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text("Carpool & Group created!"), backgroundColor: Colors.green)
                               );
                               
-                              // 🚀 4. 【核心跳转】直接把你拉进刚才建好的群聊！
                               Navigator.pushReplacement(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => GroupMessagingPage(
-                                    groupId: groupRef.id, // 获取刚建好的群组 ID
+                                    groupId: groupRef.id,
                                     groupName: groupTitle,
                                   ),
                                 ),
