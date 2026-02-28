@@ -287,5 +287,25 @@ class _MatchingPageState extends State<MatchingPage> {
         )
       )
     );
+
+    NotificationService.showNotification(
+      id: 999,
+      title: "Match Successful！🚗",
+      body: "The system has matched you with ${match.name}. Click to view details.",
+      senderName: "System",
+      senderEmail: "system@kitahack.com",
+      type: "match",
+      // 🚀 关键：把当前匹配到的详细信息传给通知的 payload
+      payload: {
+        "type": "match",
+        "matchName": match.name,
+        "matchPersonality": match.personality,
+        "matchEmail": match.email,
+        "origin": "APU", 
+        "destination": widget.currentUser.destination,
+        "date": realDate,
+        "time": realTime,
+      },
+    );
   }
 }

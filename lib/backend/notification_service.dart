@@ -38,12 +38,26 @@ class NotificationService {
     if (payload == null) return;
 
     if (payload['type'] == 'match') {
-      print("Jump to Match Success Page");
-      navigatorKey.currentState?.push(
-        MaterialPageRoute(builder: (context) => const MatchSuccessPage()),
-      );
-      return;
-    }
+    // 🚀 从 payload 中提取之前存入的数据
+    navigatorKey.currentState?.push(
+      MaterialPageRoute(
+        builder: (context) => MatchSuccessPage(
+          matchedUsers: [
+            {
+              "name": payload['matchName'] ?? "Partner",
+              "personality": payload['matchPersonality'] ?? "Unknown",
+              "email": payload['matchEmail'] ?? "",
+            }
+          ],
+          origin: payload['origin'] ?? "Current Location",
+          destination: payload['destination'] ?? "Destination",
+          date: payload['date'] ?? "",
+          time: payload['time'] ?? "",
+        ),
+      ),
+    );
+    return;
+  }
 
     if (payload['userEmail'] != null) {
       String name = payload['userName'] ?? "User";
@@ -90,7 +104,18 @@ class NotificationService {
     required String senderEmail,
     String? groupKey,
     String? type,
+    Map<String, String>? payload,
   }) async {
+
+    Map<String, String> finalPayload = {
+      "type": type ?? "chat",
+      "userName": senderName,
+      "userEmail": senderEmail,
+    };
+    if (payload != null) {
+      finalPayload.addAll(payload);
+     }
+
     await AwesomeNotifications().createNotification(
       content: NotificationContent(
         id: id,
@@ -98,11 +123,7 @@ class NotificationService {
         title: title,
         body: body,
         groupKey: groupKey,
-        payload: {
-          "type": type ?? "chat",
-          "userName": senderName,
-          "userEmail": senderEmail,
-        },
+        payload: finalPayload,
         notificationLayout: NotificationLayout.Default,
       ),
     );
